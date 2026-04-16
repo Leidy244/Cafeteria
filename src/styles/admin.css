@@ -1,0 +1,565 @@
+/* admin.css */
+
+:root {
+  --bg-dark: #121417;
+  --card-bg: #1e2126;
+  --primary-pink: #d63384;
+  --text-main: #e9ecef;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --accent-green: #4ade80;
+}
+
+.inventario-container {
+  padding: 40px 20px;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.inventario-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.inventario-header h1 {
+  font-size: 3rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.inventario-header p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  margin-top: 10px;
+}
+
+/* Tarjeta del Formulario */
+.form-card {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  max-width: 900px;
+  margin: 0 auto 50px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.grid-form input {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  padding: 12px 15px;
+  border-radius: 10px;
+  color: white;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.grid-form input:focus {
+  border-color: var(--primary-pink);
+  box-shadow: 0 0 0 2px rgba(214, 51, 132, 0.2);
+}
+
+/* Estilo para el input de Imagen */
+.file-input-wrapper {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  background: #0f172a;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.file-input-wrapper label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Botones */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 25px;
+  justify-content: center;
+}
+
+.btn-save {
+  background: var(--primary-pink);
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.btn-save:hover {
+  background: #b0236a;
+  transform: translateY(-2px);
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  padding: 12px 25px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* Tabla Estilizada */
+.table-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+.inventario-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.inventario-table th {
+  text-align: left;
+  padding: 15px;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.inventario-table td {
+  padding: 20px 15px;
+  background: var(--card-bg);
+}
+
+.inventario-table tr td:first-child { border-radius: 15px 0 0 15px; }
+.inventario-table tr td:last-child { border-radius: 0 15px 15px 0; }
+
+.thumb-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.thumb-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.txt-bold { font-weight: 700; color: white; }
+.txt-profit { color: var(--accent-green); font-weight: bold; }
+
+.btn-icon {
+  background: #334155;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 5px;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover { background: #475569; }
+/* admin.css - Agrega o verifica estos estilos */
+.inventario-container {
+  padding: 40px 20px;
+  background-color: #121417; /* Fondo oscuro */
+  min-height: 100vh;
+}
+
+.table-container {
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.inventario-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1e2126; /* Fondo de tarjetas */
+  color: white;
+}
+
+.inventario-table th {
+  background: #2d333b;
+  padding: 15px;
+  color: #94a3b8;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.inventario-table td {
+  padding: 15px;
+  border-bottom: 1px solid #334155;
+}
+
+.txt-bold {
+  font-weight: bold;
+  color: #fff;
+}
+
+.txt-profit {
+  color: #4ade80; /* Verde para los ingresos */
+  font-weight: bold;
+}
+/* Layout Principal: Ocupa toda la pantalla sin scroll innecesario */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+  background-color: #0f172a; /* Fondo muy oscuro */
+  color: white;
+}
+
+/* Barra Lateral (Sidebar) */
+.sidebar {
+  width: 280px;
+  background-color: #1e293b; /* Gris azulado profundo */
+  border-right: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.sidebar-header {
+  text-align: center;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 20px;
+}
+
+.sidebar-header h2 {
+  font-size: 1.5rem;
+  color: #f8fafc;
+  margin-bottom: 5px;
+}
+
+.status-online {
+  font-size: 0.85rem;
+  color: #4ade80; /* Verde brillante */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* Navegación dentro del Sidebar */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1; /* Empuja el footer hacia abajo */
+}
+
+.sidebar-nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #334155;
+  border: 1px solid transparent;
+  color: #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.sidebar-nav button:hover {
+  background: #475569;
+  color: white;
+  transform: translateX(5px);
+}
+
+.sidebar-nav button.active {
+  background: #d63384; /* El color rosa de Juyasia */
+  color: white;
+  box-shadow: 0 4px 12px rgba(214, 51, 132, 0.3);
+  border-color: #f472b6;
+}
+
+/* Botón de Salida al Menú */
+.sidebar-footer {
+  padding-top: 20px;
+  border-top: 1px solid #334155;
+}
+
+.sidebar-footer button {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px dashed #64748b;
+  color: #94a3b8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.sidebar-footer button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  border-color: white;
+}
+
+/* Área de Contenido Principal */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px;
+  background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+}
+
+.content-header {
+  margin-bottom: 30px;
+}
+
+.content-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+/* Contenedor principal para centrar el contenido */
+.caja-centrada-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: #121417; /* Fondo oscuro del dashboard */
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Texto superior */
+.caja-header-text h2 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+
+.caja-header-text p {
+  font-size: 1.5rem;
+  color: #94a3b8; /* Texto muted */
+  margin-bottom: 25px;
+}
+
+/* Estructura del Input Group (Cápsula) */
+.caja-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+/* El input gris oscuro */
+.caja-input-group input {
+  background-color: #2d2d2d; /* Gris de la imagen */
+  border: 1px solid #444;
+  border-right: none; /* Quita el borde derecho para pegar al botón */
+  color: #ffffff;
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  width: 250px;
+  border-radius: 8px 0 0 8px; /* Redondeado solo a la izquierda */
+  outline: none;
+}
+
+.caja-input-group input::placeholder {
+  color: #777;
+}
+
+/* El botón rosa tipo cápsula */
+.caja-input-group button {
+  background-color: #d63384; /* Tu color primary-pink */
+  color: white;
+  border: none;
+  padding: 0 30px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 0 25px 25px 0; /* Efecto cápsula a la derecha */
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.caja-input-group button:hover {
+  background-color: #b0236a;
+  box-shadow: 0 0 15px rgba(214, 51, 132, 0.3);
+  transform: scale(1.02);
+}
+
+.caja-input-group button:active {
+  transform: scale(0.98);
+}
+
+/* =========================================
+   ESTILOS COMPLEMENTARIOS Juyasia Admin
+   ========================================= */
+
+/* Variables extra para el panel de caja */
+:root {
+  --text-danger: #ef4444; /* Rojo brillante para gastos */
+  --text-yellow: #facc15; /* Amarillo para el balance físico */
+}
+
+/* Clases de utilidad que no estaban */
+.text-danger { color: var(--text-danger); }
+.text-yellow { color: var(--text-yellow); }
+.text-muted { color: var(--text-muted); }
+.icon-main { font-size: 3.5rem; display: block; margin: 0 auto; }
+.titulo-principal { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+
+/* 1. Layout Principal para centrar el formulario de apertura */
+.caja-centrada-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+}
+
+/* 2. Cuadrícula de Tarjetas de Resumen */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Tarjeta base de resumen (oscuro elegante) */
+.card-resumen {
+  background: var(--card-bg);
+  padding: 25px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.card-resumen:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-pink);
+}
+
+/* Bordes de color para identificar rápido */
+.border-ingresos {
+  border-bottom: 4px solid var(--accent-green);
+}
+
+.border-egresos {
+  border-bottom: 4px solid var(--text-danger);
+}
+
+/* Tarjeta de Balance Final (La más oscura y llamativa) */
+.card-balance {
+  background: #0f172a; /* Negro más profundo */
+  padding: 25px;
+  border-radius: 20px;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Sombra pesada */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Tipografía para los montos dentro de las tarjetas */
+.monto-label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.monto-principal {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+/* Filas de detalle dentro de las tarjetas */
+.detalle-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+
+.detalle-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.detalle-valor {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Botón de Cierre Grande */
+.btn-cerrar-caja {
+  width: 100%;
+  padding: 20px;
+  margin-top: 30px;
+  background: rgba(239, 68, 68, 0.1); /* Fondo rojo muy sutil */
+  color: var(--text-danger);
+  border: 2px solid rgba(239, 68, 68, 0.15);
+  border-radius: 15px;
+  font-weight: 800;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cerrar-caja:hover {
+  background: var(--text-danger);
+  color: white;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+  transform: scale(1.02);
+}
+
+.btn-cerrar-caja:active {
+  transform: scale(0.98);
+}
+
+/* Animación de entrada suave */
+.fade-in-up {
+  animation: fadeInUp 0.5s ease backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
