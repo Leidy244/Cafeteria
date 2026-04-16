@@ -3,6 +3,7 @@ import Inventario from "./Inventario.tsx";
 import CierreCaja from "./cierrecaja.tsx"; 
 import { useCaja } from "../hooks/caja"; 
 import "../styles/admin.css";
+import Reporte from "./Reporte.tsx";
 
 function AdminDashboard() {
   const [tabActiva, setTabActiva] = useState("inventario");
@@ -37,6 +38,9 @@ function AdminDashboard() {
           <button className={tabActiva === "activos" ? "active" : ""} onClick={() => setTabActiva("activos")}>
             🔌 Equipos
           </button>
+          <button className={tabActiva === "reporte" ? "active" : ""} onClick={() => setTabActiva("reporte")}>
+            📊 Reporte de Ventas
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -58,6 +62,7 @@ function AdminDashboard() {
           {tabActiva === "inventario" && <Inventario key="venta" tipo="venta" />}
           {tabActiva === "cafeteria" && <Inventario key="insumo" tipo="insumo" />}
           {tabActiva === "activos" && <Inventario key="equipo" tipo="equipo" />}
+          {tabActiva === "reporte" && <Reporte />}
         </section>
       </main>
     </div>
