@@ -4,7 +4,7 @@ const API_PRODUCTOS = "http://localhost:3001/productos";
 const API_VENTAS = "http://localhost:3001/ventas";
 const API_PEDIDOS = "http://localhost:3001/pedidos";
 
-export const useCaja = () => {
+export const useVentas = () => {
     // 1. ESTADOS DE PRODUCTOS E INVENTARIO
     const [productos, setProductos] = useState<any[]>([]);
     const [carrito, setCarrito] = useState<any[]>([]);

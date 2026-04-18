@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCaja } from '../hooks/cierrecaja'; 
+import { useCaja } from '../hooks/cierrecaja';
 import '../styles/admin.css';
 
 const CierreCaja: React.FC = () => {
@@ -59,14 +59,14 @@ const CierreCaja: React.FC = () => {
 
   // --- VISTA B: CAJA ABIERTA ---
   const baseInicial = Number(cajaInfo.montoInicial || 0);
-
   const ejecutarCierre = async () => {
     if (window.confirm(`¿Cerrar turno con un total físico de $${resumen.totalAcumulado.toLocaleString()}?`)) {
-      const resultado = await cerrarCaja(cajaInfo.id, resumen.totalAcumulado);
-      if (resultado.success) {
+      // Solo enviamos el ID, ya que el backend calcula o borra lo necesario
+      const resultado = await cerrarCaja(cajaInfo.id);
+
+      // El hook ya devuelve { success: true } o { success: false }
+      if (resultado && resultado.success) {
         alert("✅ Turno cerrado exitosamente.");
-      } else {
-        alert("❌ Error: " + (resultado.msg || "No se pudo cerrar"));
       }
     }
   };

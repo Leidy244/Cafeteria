@@ -1,9 +1,9 @@
 // Caja.tsx
-import { useCaja } from "../hooks/caja"; // Asegúrate de que la ruta sea correcta
+import { useVentas } from "../hooks/caja";
 import "../styles/caja.css";
 
 function Caja() {
-    const props = useCaja();
+    const props = useVentas();
 
     // Helper para agrupar productos repetidos en la tabla visual
     const carritoAgrupado = () => {
@@ -21,29 +21,130 @@ function Caja() {
 
     return (
         <div className="contenedor">
-            <h1 className="titulo">Juyasia ☕🍦</h1>
+            <h1 className="titulo">
+                <span className="titulo-texto">Juyasia</span> ☕🍦
+            </h1>
 
             {/* SECCIÓN DE PEDIDOS PENDIENTES */}
-            <button 
-                className="btn-pendientes-toggle" 
+            <button
+                className="btn-pendientes-toggle"
                 onClick={() => props.setMostrarPendientes(!props.mostrarPendientes)}
             >
                 📦 Pedidos Guardados ({props.pedidosPendientes.length})
             </button>
 
+            {/* PEDIDOS GUARDADOS */}
             {props.mostrarPendientes && (
-                <div className="pendientes-container">
-                    <div className="pendientes-grid">
-                        {props.pedidosPendientes.length === 0 ? (
-                            <p>No hay pedidos pendientes</p>
-                        ) : (
-                            props.pedidosPendientes.map(p => (
+                <div className="pendientes-wrapper">
+                    {props.pedidosPendientes.length === 0 ? (
+                        <div className="empty-state">
+                            <span className="icon">📦</span>
+                            No hay pedidos guardados
+                        </div>
+                    ) : (
+                        <div className="pendientes-grid">
+                            {props.pedidosPendientes.map(p => (
                                 <div key={p.id} className="pendiente-card">
-                                    <strong>Mesa {p.mesa} - ${p.total.toLocaleString()}</strong>
-                                    <button onClick={() => props.cargarPedido(p)}>📥 Cargar</button>
+                                    <div className="pendiente-info">
+                                        <span className="pendiente-mesa">Mesa {p.mesa}</span>
+                                        <span className="pendiente-total">${p.total.toLocaleString()}</span>
+                                    </div>
+                                    <button className="btn btn-cargar" onClick={() => props.cargarPedido(p)}>
+                                        📥 Cargar
+                                    </button>
                                 </div>
-                            ))
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* MODAL DE PAGO */}
+            {props.mostrarPago && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+
+                        <button className="btn-cerrar-modal" onClick={() => props.setMostrarPago(false)}>✕</button>
+                        <h2>Resumen de Pago</h2>
+
+                        <div className="modal-monto-total">
+                            <span className="modal-monto-label">Monto a cobrar</span>
+                            <span className="modal-monto-valor">${props.total.toLocaleString()}</span>
+                        </div>
+
+                        {!props.pasoPagoEfectivo ? (
+                            <div className="metodos-pago">
+                                <p className="metodos-label">Selecciona el método de pago</p>
+
+                                <button
+                                    className="metodo-pago-option"
+                                    onClick={() => {
+                                        props.setMetodoPago("efectivo");
+                                        props.setPasoPagoEfectivo(true);
+                                    }}
+                                >
+                                    <span className="icono">💵</span>
+                                    <div>
+                                        <strong>Efectivo</strong>
+                                        <span>Pago en billetes o monedas</span>
+                                    </div>
+                                </button>
+
+                                <button
+                                    className="metodo-pago-option"
+                                    onClick={() => props.procesarPago("nequi")}
+                                >
+                                    <span className="icono">📱</span>
+                                    <div>
+                                        <strong>Nequi</strong>
+                                        <span>Transferencia digital</span>
+                                    </div>
+                                </button>
+
+                                <button className="btn btn-modal-cancelar" onClick={() => props.setMostrarPago(false)}>
+                                    Cancelar
+                                </button>
+                            </div>
+
+                        ) : (
+                            <div className="pago-efectivo-detalles">
+
+                                <div className="pago-input-group">
+                                    <label className="pago-input-label">Monto recibido</label>
+                                    <div className="turno-input-wrapper">
+                                        <span className="turno-input-prefix">$</span>
+                                        <input
+                                            type="number"
+                                            className="turno-input"
+                                            placeholder="0"
+                                            value={props.montoRecibido}
+                                            onChange={(e) => props.setMontoRecibido(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className={`vuelto-display ${props.vuelto < 0 ? 'vuelto--negativo' : 'vuelto--positivo'}`}>
+                                    <span className="vuelto-label">Vuelto</span>
+                                    <span className="vuelto-valor">${props.vuelto.toLocaleString()}</span>
+                                </div>
+
+                                <div className="botones-finales">
+                                    <button
+                                        className="btn btn-confirmar"
+                                        onClick={() => props.procesarPago("efectivo")}
+                                        disabled={props.vuelto < 0 || !props.montoRecibido}
+                                    >
+                                        ✅ Confirmar Venta
+                                    </button>
+                                    <button className="btn btn-atras" onClick={() => props.setPasoPagoEfectivo(false)}>
+                                        Atrás
+                                    </button>
+                                </div>
+
+                            </div>
                         )}
+
                     </div>
                 </div>
             )}
@@ -51,10 +152,10 @@ function Caja() {
             {/* ENTRADA DE MESA */}
             <div className="mesa-input-container">
                 <label>🪑 Mesa:</label>
-                <input 
-                    type="number" 
-                    value={props.mesa} 
-                    onChange={(e) => props.setMesa(e.target.value)} 
+                <input
+                    type="number"
+                    value={props.mesa}
+                    onChange={(e) => props.setMesa(e.target.value)}
                     className="input-mesa"
                     placeholder="0"
                 />
@@ -64,14 +165,28 @@ function Caja() {
             <div className="productos-grid">
                 {props.productos.map(p => (
                     <div key={p.id} className={`producto-card ${p.cantidad <= 0 ? 'sin-stock' : ''}`}>
-                        <strong>{p.nombre}</strong>
-                        <span>${p.precioVenta.toLocaleString()}</span>
-                        <button 
-                            disabled={p.cantidad <= 0} 
-                            onClick={() => props.agregarAlCarrito(p)}
-                        >
-                            {p.cantidad <= 0 ? "Agotado" : "Agregar"}
-                        </button>
+                        <div className="producto-img-container">
+                            {p.imagen ? (
+                                <img
+                                    src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`}
+                                    alt={p.nombre}
+                                    className="producto-img"
+                                />
+                            ) : (
+                                <div className="sin-img">☕</div>
+                            )}
+                        </div>
+
+                        <div className="producto-info">
+                            <strong>{p.nombre}</strong>
+                            <span>${p.precioVenta.toLocaleString()}</span>
+                            <button
+                                disabled={p.cantidad <= 0}
+                                onClick={() => props.agregarAlCarrito(p)}
+                            >
+                                {p.cantidad <= 0 ? "Agotado" : "Agregar"}
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -107,7 +222,7 @@ function Caja() {
                             ))}
                         </tbody>
                     </table>
-                    
+
                     <div className="total-seccion">
                         <h2>Total: ${props.total.toLocaleString()}</h2>
                     </div>
@@ -119,70 +234,7 @@ function Caja() {
                 </div>
             )}
 
-            {/* MODAL DE PROCESAMIENTO DE PAGO */}
-            {props.mostrarPago && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <button className="btn-cerrar-modal" onClick={() => props.setMostrarPago(false)}>X</button>
-                        <h2>Resumen de Pago</h2>
-                        <p className="total-modal">Monto a cobrar: <strong>${props.total.toLocaleString()}</strong></p>
-                        
-                        {!props.pasoPagoEfectivo ? (
-                            <div className="metodos-pago">
-                                <p>Seleccione método:</p>
-                                <button 
-                                    className="btn-metodo efectivo"
-                                    onClick={() => { 
-                                        props.setMetodoPago("efectivo"); 
-                                        props.setPasoPagoEfectivo(true); 
-                                    }}
-                                >
-                                    💵 Efectivo
-                                </button>
-                                
-                                <button 
-                                    className="btn-metodo nequi"
-                                    onClick={() => props.procesarPago("nequi")} // Envío directo de "nequi"
-                                >
-                                    📱 Nequi
-                                </button>
-                                
-                                <button className="btn-cancelar" onClick={() => props.setMostrarPago(false)}>Cancelar</button>
-                            </div>
-                        ) : (
-                            <div className="pago-efectivo-detalles">
-                                <label>Monto recibido:</label>
-                                <input 
-                                    type="number" 
-                                    placeholder="Ej: 20000" 
-                                    value={props.montoRecibido} 
-                                    onChange={(e) => props.setMontoRecibido(e.target.value)}
-                                    autoFocus
-                                    className="input-pago"
-                                />
-                                
-                                <div className="vuelto-container">
-                                    <p>Vuelto:</p>
-                                    <h3 className={props.vuelto < 0 ? "vuelto-negativo" : "vuelto-positivo"}>
-                                        ${props.vuelto.toLocaleString()}
-                                    </h3>
-                                </div>
 
-                                <div className="botones-finales">
-                                    <button 
-                                        className="btn-confirmar"
-                                        onClick={() => props.procesarPago("efectivo")} // Envío directo de "efectivo"
-                                        disabled={props.vuelto < 0 || !props.montoRecibido}
-                                    >
-                                        ✅ Confirmar Venta
-                                    </button>
-                                    <button className="btn-atras" onClick={() => props.setPasoPagoEfectivo(false)}>Atrás</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

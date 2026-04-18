@@ -1,18 +1,16 @@
 import React, { useState } from "react";
 import Inventario from "./Inventario.tsx"; 
 import CierreCaja from "./cierrecaja.tsx"; 
-import { useCaja } from "../hooks/caja"; 
+import { useVentas } from "../hooks/caja"; 
 import "../styles/admin.css";
 import Reporte from "./Reporte.tsx";
+import { useCaja } from "../hooks/cierrecaja.ts";
 
 function AdminDashboard() {
   const [tabActiva, setTabActiva] = useState("inventario");
   
   
-  const { cajaInfo, cargando } = useCaja();
-  
-  // 2. LÓGICA DE ESTADO REAL
-  // Ya no usamos un string fijo "Abierto", sino el valor real que viene de la DB
+  const { cajaInfo, cargando } =    useCaja();
   const estadoCaja = cajaInfo?.estado === "abierto" ? "Abierto" : "Cerrado";
 
   if (cargando) return <div className="loader">Cargando sistema...</div>;
@@ -53,6 +51,7 @@ function AdminDashboard() {
           <h1>
             {tabActiva === "cierrecaja" ? "Control de Turno" : `Gestión de ${tabActiva}`}
           </h1>
+          
           {/* Aquí mostrará dinámicamente si está Abierto o Cerrado */}
           <p className="status-line">Estado de caja: <strong>{estadoCaja}</strong></p>
         </div>

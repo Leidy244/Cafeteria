@@ -57,25 +57,26 @@ export const useInventario = () => {
       }
     } catch (e) {
       console.error("Caja cerrada o error de conexión");
-    }
-
-   // ... dentro de guardarProducto
+    }// ... dentro de guardarProducto
 const formData = new FormData();
 formData.append("nombre", nombre.trim());
 
-// IMPORTANTE: El backend necesita el valor numérico para la tabla 'ventas' (gastos)
-const valorCosto = precioIngreso.toString(); 
-formData.append("precioIngreso", valorCosto);
-formData.append("total", valorCosto); 
+// IMPORTANTE: Enviamos el precio unitario
+formData.append("precioIngreso", precioIngreso.toString());
+
+// ENVIAMOS LA CANTIDAD: 
+// Si el usuario no pone nada, enviamos "1" por defecto para que el cálculo no dé 0
+const cantidadFinal = cantidad && Number(cantidad) > 0 ? cantidad.toString() : "1";
+formData.append("cantidad", cantidadFinal);
 
 formData.append("precioVenta", precioVenta || "0");
-formData.append("cantidad", cantidad || "0");
 formData.append("descripcion", descripcion || "");
 formData.append("tipo", tipoActual.toLowerCase().trim());
-    // Si tenemos un turno activo, lo enviamos para que el backend registre el gasto
-    if (turnoIdActivo) {
-      formData.append("turnoId", turnoIdActivo.toString());
-    }
+
+// Enviamos el turnoId para que el backend sepa a qué caja restar el dinero
+if (turnoIdActivo) {
+  formData.append("turnoId", turnoIdActivo.toString());
+}
 
     if (imagen) {
       formData.append("imagen", imagen);

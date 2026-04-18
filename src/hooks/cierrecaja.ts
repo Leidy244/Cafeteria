@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_BASE = 'http://localhost:3001/caja'; 
+const API_BASE = 'http://localhost:3001/caja';
 
 export interface ResumenCaja {
   productos: number;
@@ -17,36 +17,42 @@ export const useCaja = () => {
     productos: 0, insumos: 0, equipos: 0, efectivo: 0, nequi: 0, totalAcumulado: 0
   });
   const [cargando, setCargando] = useState(true);
-const refrescar = useCallback(async () => {
-  try {
-    const res = await fetch(`${API_BASE}/estado`);
-    if (res.status === 404) { setCajaInfo(null); return; }
-    const data = await res.json();
 
-    if (data && data.estado === 'abierto') {
-      setCajaInfo(data);
-      const turnoId = data.id;
+  const refrescar = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/estado`);
+    if (res.status === 404) {
+      setCajaInfo(null);
+      setResumen({ productos: 0, insumos: 0, equipos: 0, efectivo: 0, nequi: 0, totalAcumulado: 0 });
+      return; }
+      const data = await res.json();
 
-      // Pedimos los totales de ventas y gastos al servidor
-      const [resPagos, resTipos] = await Promise.all([
-        fetch(`http://localhost:3001/ventas/resumen-pagos/${turnoId}`).then(r => r.json()),
-        fetch(`http://localhost:3001/ventas/resumen-cierre/${turnoId}`).then(r => r.json())
-      ]);
+      if (data && data.estado === 'abierto') {
+        setCajaInfo(data);
+        const turnoId = data.id;
 
-      setResumen({
-        productos: Number(resTipos.venta || 0),
-        insumos: Number(resTipos.insumo || 0),   // <--- Aquí se cargan los gastos
-        equipos: Number(resTipos.equipo || 0),   // <--- Aquí se cargan los gastos
-        efectivo: Number(resPagos.efectivo || 0), 
-        nequi: Number(resPagos.nequi || 0),
-        totalAcumulado: (Number(data.montoInicial || 0) + Number(resPagos.efectivo || 0)) - (Number(resTipos.insumo || 0) + Number(resTipos.equipo || 0))
-      });
+        const resResumen = await fetch(`http://localhost:3001/caja/resumen-turno/${turnoId}`);
+        const dataResumen = await resResumen.json();
+
+        setResumen({
+          productos: Number(dataResumen.productos || 0),
+          insumos: Number(dataResumen.insumos || 0),
+          equipos: Number(dataResumen.equipos || 0),
+          efectivo: Number(dataResumen.efectivo || 0),
+          nequi: Number(dataResumen.nequi || 0),
+
+          // CORRECCIÓN AQUÍ: 
+          // Usamos 'efectivo' en lugar de 'productos' para el total físico (amarillo)
+          totalAcumulado: (Number(data.montoInicial || 0) + Number(dataResumen.efectivo || 0)) -
+            (Number(dataResumen.insumos || 0) + Number(dataResumen.equipos || 0))
+        });
+      }
+    } catch (err) {
+      console.error("Error al actualizar balance:", err);
+    } finally {
+      setCargando(false);
     }
-  } catch (err) {
-    console.error("Error al actualizar balance:", err);
-  } finally {
-    setCargando(false);
-  }}, []);
+  }, []);
 
   const abrirCaja = async (montoInicial: number) => {
     try {
@@ -57,7 +63,7 @@ const refrescar = useCallback(async () => {
       });
       const data = await res.json();
       if (res.ok) {
-        await refrescar(); 
+        await refrescar();
         return { success: true };
       }
       return { success: false, msg: data.message };
@@ -65,30 +71,42 @@ const refrescar = useCallback(async () => {
       return { success: false, msg: "Error de conexión" };
     }
   };
-
-  const cerrarCaja = async (id: number, montoFinal: number) => {
+  // En tu hook useCaja o donde tengas cerrarCaja (Línea 70 aprox)
+  const cerrarCaja = async (idCaja: number) => {
     try {
-      const res = await fetch(`${API_BASE}/cerrar`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, montoFinal })
+      const res = await fetch(`http://localhost:3001/caja/cerrar/${idCaja}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" }
       });
-      if (res.ok) {
-        await refrescar();
-        return { success: true };
+
+      // Verificamos si la respuesta es correcta antes de intentar leer el JSON
+      if (!res.ok) {
+        throw new Error(`Error en el servidor: ${res.status}`);
       }
-      const errorData = await res.json();
-      return { success: false, msg: errorData.message };
-    } catch (err) {
-      return { success: false, msg: "Error de conexión" };
+
+      const data = await res.json();
+      alert("Caja cerrada con éxito ✅");
+
+      return { success: true, data }; // Ahora sí devolvemos el objeto con 'success'
+
+    } catch (error) {
+      console.error("Error al cerrar:", error);
+      alert("No se pudo cerrar la caja. Revisa la conexión con el servidor.");
+      return { success: false, msg: "Error de conexión" }; // Devolvemos algo seguro
+    } finally {
+      // Reiniciamos todo localmente para que la app siga funcionando
+      setCajaInfo(null);
+      setResumen({ productos: 0, insumos: 0, equipos: 0, efectivo: 0, nequi: 0, totalAcumulado: 0 });
+      await refrescar();
     }
   };
+
 
   // UN SOLO useEffect es suficiente para cargar todo al inicio
   useEffect(() => {
     refrescar();
   }, [refrescar]);
 
-  
-  return { cajaInfo, resumen, cargando, abrirCaja, cerrarCaja, refrescar};
+
+  return { cajaInfo, resumen, cargando, abrirCaja, cerrarCaja, refrescar };
 };
