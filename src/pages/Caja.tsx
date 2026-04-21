@@ -19,6 +19,11 @@ function Caja() {
         return agrupado;
     };
 
+    // Función para imprimir la factura (usa el diálogo nativo del sistema)
+    const manejarImpresion = () => {
+        window.print();
+    };
+
     return (
         <div className="contenedor">
             <h1 className="titulo">
@@ -191,50 +196,52 @@ function Caja() {
                 ))}
             </div>
 
-            {/* RESUMEN DEL CARRITO */}
+            {/* RESUMEN DEL CARRITO / SECCIÓN DE FACTURA */}
             {props.carrito.length > 0 && (
                 <div className="carrito-container">
-                    <table className="tabla-carrito">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Cant.</th>
-                                <th>Subtotal</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {carritoAgrupado().map(item => (
-                                <tr key={item.id}>
-                                    <td>{item.nombre}</td>
-                                    <td>
-                                        <div className="controles-cantidad">
-                                            <button onClick={() => props.cambiarCantidad(item.id, -1)}>-</button>
-                                            <span className="cantidad-numero">{item.cantidad}</span>
-                                            <button onClick={() => props.cambiarCantidad(item.id, 1)}>+</button>
-                                        </div>
-                                    </td>
-                                    <td>${(item.precioVenta * item.cantidad).toLocaleString()}</td>
-                                    <td>
-                                        <button className="btn-eliminar" onClick={() => props.removerProducto(item.id)}>🗑️</button>
-                                    </td>
+                    <div id="seccion-factura"> 
+                        {/* ID útil para estilos de impresión CSS */}
+                        <table className="tabla-carrito">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cant.</th>
+                                    <th>Subtotal</th>
+                                    <th className="no-print">Acción</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {carritoAgrupado().map(item => (
+                                    <tr key={item.id}>
+                                        <td>{item.nombre}</td>
+                                        <td>
+                                            <div className="controles-cantidad">
+                                                <button className="no-print" onClick={() => props.cambiarCantidad(item.id, -1)}>-</button>
+                                                <span className="cantidad-numero">{item.cantidad}</span>
+                                                <button className="no-print" onClick={() => props.cambiarCantidad(item.id, 1)}>+</button>
+                                            </div>
+                                        </td>
+                                        <td>${(item.precioVenta * item.cantidad).toLocaleString()}</td>
+                                        <td className="no-print">
+                                            <button className="btn-eliminar" onClick={() => props.removerProducto(item.id)}>🗑️</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
 
-                    <div className="total-seccion">
-                        <h2>Total: ${props.total.toLocaleString()}</h2>
+                        <div className="total-seccion">
+                            <h2>Total: ${props.total.toLocaleString()}</h2>
+                        </div>
                     </div>
 
                     <div className="botones-accion">
                         <button onClick={props.guardarPedido} className="btn-listo">💾 Guardar Pedido</button>
+                        <button onClick={manejarImpresion} className="btn-imprimir">🖨️ Imprimir Factura</button>
                         <button onClick={() => props.setMostrarPago(true)} className="btn-pagar">💰 Ir a Pagar</button>
                     </div>
                 </div>
             )}
-
-
         </div>
     );
 }

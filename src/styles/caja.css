@@ -624,3 +624,146 @@
   .tabla-carrito td { padding: 10px 8px; font-size: 0.85rem; }
   .modal-content { padding: 20px; }
 }
+
+@media print {
+    /* 1. Reseteo completo para que solo se vea la factura */
+    body * {
+        visibility: hidden;
+    }
+    #seccion-factura,
+    #seccion-factura * {
+        visibility: visible;
+    }
+    #seccion-factura {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        padding: 15mm 10mm;
+        background: white !important;
+        color: black !important;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12pt;
+        box-sizing: border-box;
+    }
+
+    /* 2. Eliminar márgenes de página que puedan mostrar metadatos del navegador */
+    @page {
+        margin: 0;
+        size: auto;
+    }
+
+    /* 3. Ocultar elementos de la interfaz (botones, imágenes, etc.) */
+    .no-print,
+    .btn-pendientes-toggle,
+    .productos-grid,
+    .mesa-input-container,
+    .botones-accion,
+    .btn-eliminar,
+    .controles-cantidad button,
+    .producto-img-container,
+    .titulo,
+    nav {
+        display: none !important;
+    }
+
+    /* 4. Asegurar texto negro y fondo blanco para toda la factura */
+    #seccion-factura,
+    #seccion-factura table,
+    #seccion-factura th,
+    #seccion-factura td,
+    #seccion-factura div,
+    #seccion-factura span,
+    #seccion-factura h2 {
+        color: black !important;
+        background: transparent !important;
+        border-color: black !important;
+    }
+
+    /* 5. Encabezado de la factura (DATOS DEL NEGOCIO) */
+    #seccion-factura::before {
+        content: "JUYASIA\A NIT: 123.456.789-0\A Régimen Simplificado\A Jenesano - Boyacá\A Tel: 3118971030\A --------------------------";
+        display: block;
+        text-align: center;
+        white-space: pre-wrap;
+        font-weight: bold;
+        margin-bottom: 20px;
+        font-size: 14pt;
+        text-transform: uppercase;
+        color: black !important;
+    }
+
+    /* 6. Estilos de la tabla para que NO se corte el texto */
+    .tabla-carrito {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed; /* Permite controlar anchos */
+    }
+    .tabla-carrito th,
+    .tabla-carrito td {
+        border: 1px solid #000;
+        padding: 8px 6px;
+        text-align: left;
+        vertical-align: top;
+        word-break: break-word;   /* Evita que el texto se salga */
+        white-space: normal;      /* Permite saltos de línea */
+    }
+    /* Anchos específicos para cada columna */
+    .tabla-carrito th:first-child,
+    .tabla-carrito td:first-child {
+        width: 55%;   /* Columna Producto */
+    }
+    .tabla-carrito th:nth-child(2),
+    .tabla-carrito td:nth-child(2) {
+        width: 15%;   /* Columna Cantidad */
+        text-align: center;
+    }
+    .tabla-carrito th:nth-child(3),
+    .tabla-carrito td:nth-child(3) {
+        width: 30%;   /* Columna Subtotal */
+        text-align: right;
+    }
+    /* Encabezados de la tabla en negrita */
+    .tabla-carrito th {
+        background: #f0f0f0 !important;
+        font-weight: bold;
+    }
+
+    /* 7. Total */
+    .total-seccion {
+        text-align: right;
+        margin-top: 20px;
+        border-top: 2px solid black;
+        padding-top: 10px;
+    }
+    .total-seccion h2 {
+        font-size: 16pt;
+        margin: 0;
+    }
+
+    /* 8. Pie de página (Gracias, impreso por...) */
+    #seccion-factura::after {
+        content: "--------------------------\A Gracias por su compra\A Impreso por Sistema Juyasia POS";
+        display: block;
+        text-align: center;
+        white-space: pre-wrap;
+        margin-top: 30px;
+        font-size: 10pt;
+        color: black !important;
+    }
+    @page {
+    size: 80mm auto;   /* Ancho de ticket térmico estándar */
+    margin: 0;
+}
+body {
+    margin: 0;
+    padding: 0;
+    width: 80mm;
+}
+#seccion-factura {
+    width: 100%;
+    padding: 2mm;
+    font-size: 10pt; /* Texto más pequeño para que entre más información */
+}
+}
