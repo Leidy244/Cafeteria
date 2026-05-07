@@ -20,12 +20,37 @@ export const useVentas = () => {
     const [pasoPagoEfectivo, setPasoPagoEfectivo] = useState(false);
     const [montoRecibido, setMontoRecibido] = useState<string>("");
 
-    // --- CARGA INICIAL (PRODUCTOS Y PEDIDOS DE LA DB) ---
+
+    // 1. cargarProductos 
     const cargarProductos = useCallback(async () => {
         try {
             const res = await fetch(API_PRODUCTOS);
             const data = await res.json();
-            setProductos(data.filter((p: any) => p.tipo === "venta"));
+
+            // Separamos insumos y ventas
+            const insumos = data.filter((p: any) => p.tipo === "insumo");
+            const ventasBase = data.filter((p: any) => p.tipo === "venta");
+
+            // ✨ CRUCIAL: Mapeamos los productos de venta para que su stock sea el del insumo si tienen vínculo
+            const ventasConStockReal = ventasBase.map((producto: any) => {
+                const tieneVinculo = producto.subTipo && producto.subTipo !== 'general' && producto.subTipo !== 'pulpa';
+
+                if (tieneVinculo) {
+                    // Buscamos la pulpa que coincida con el nombre en subTipo (ej: "mango")
+                    const pulpaAsociada = insumos.find((i: any) =>
+                        i.nombre.toLowerCase().includes(producto.subTipo.toLowerCase())
+                    );
+                    return {
+                        ...producto,
+                        // Si encontramos la pulpa, usamos su cantidad, si no, queda en 0
+                        cantidad: pulpaAsociada ? pulpaAsociada.cantidad : 0,
+                        isVirtual: true // Bandera para saber que es stock de pulpa
+                    };
+                }
+                return producto;
+            });
+
+            setProductos(ventasConStockReal);
         } catch (error) {
             console.error("Error cargando productos:", error);
         }
@@ -49,19 +74,19 @@ export const useVentas = () => {
         cargarPedidosDesdeDB();
     }, [cargarProductos, cargarPedidosDesdeDB]);
 
-    // --- LÓGICA DE CARRITO Y VALIDACIÓN DE STOCK ---
+    // --- LÓGICA DE CARRITO Y VALIDACIÓN DE STOCK MEJORADA ---
     const agregarAlCarrito = (producto: any) => {
         const cantidadEnCarrito = carrito.filter(item => item.id === producto.id).length;
 
-        if (cantidadEnCarrito >= producto.cantidad) {
-            return alert(`⚠️ No puedes agregar más. Solo hay ${producto.cantidad} unidades de ${producto.nombre} en stock.`);
+        // ✨ MEJORA: Si tiene vínculo (pulpa), ignoramos la validación de cantidad 0 del producto
+        const tieneVinculo = producto.subTipo && producto.subTipo !== 'general' && producto.subTipo !== 'pulpa';
+
+        // Solo validamos stock si NO tiene vínculo (es un producto con stock propio)
+        if (!tieneVinculo && cantidadEnCarrito >= producto.cantidad) {
+            return alert(`⚠️ No hay más stock disponible de ${producto.nombre}.`);
         }
 
         setCarrito([...carrito, { ...producto }]);
-    };
-
-    const removerProducto = (id: number) => {
-        setCarrito(carrito.filter(item => item.id !== id));
     };
 
     const cambiarCantidad = (id: number, delta: number) => {
@@ -69,12 +94,17 @@ export const useVentas = () => {
             const productoOriginal = productos.find(p => p.id === id);
             const cantidadActual = carrito.filter(item => item.id === id).length;
 
-            if (productoOriginal && cantidadActual >= productoOriginal.cantidad) {
+            const tieneVinculo = productoOriginal?.subTipo &&
+                productoOriginal.subTipo !== 'general' &&
+                productoOriginal.subTipo !== 'pulpa';
+
+            // Solo bloqueamos si no hay pulpa de por medio y se acabó el stock físico
+            if (!tieneVinculo && productoOriginal && cantidadActual >= productoOriginal.cantidad) {
                 return alert(`⚠️ Solo hay ${productoOriginal.cantidad} unidades disponibles.`);
             }
-            
+
             const item = productos.find(p => p.id === id);
-            setCarrito([...carrito, item]);
+            if (item) setCarrito([...carrito, item]);
         } else {
             const nuevoCarrito = [...carrito];
             const index = carrito.findIndex(item => item.id === id);
@@ -85,90 +115,95 @@ export const useVentas = () => {
         }
     };
 
+    const removerProducto = (id: number) => {
+        setCarrito(carrito.filter(item => item.id !== id));
+    };
+
+
     // --- CÁLCULOS ---
     const total = carrito.reduce((acc, item) => acc + item.precioVenta, 0);
     const vuelto = montoRecibido ? Number(montoRecibido) - total : 0;
 
     // --- GESTIÓN DE PEDIDOS (PERSISTENCIA EN DB) ---
-   // --- useCaja.ts ---
+    // --- useCaja.ts ---
 
-const guardarPedido = async () => {
-    if (!mesa) return alert("Asigna una mesa antes de guardar.");
-    if (carrito.length === 0) return alert("El carrito está vacío.");
+    const guardarPedido = async () => {
+        if (!mesa) return alert("Asigna una mesa antes de guardar.");
+        if (carrito.length === 0) return alert("El carrito está vacío.");
 
-    // 1. Agrupamos el carrito que tienes en pantalla (que ya incluye lo cargado + lo nuevo)
-    const carritoAgrupado = carrito.reduce((acc: any[], item: any) => {
-        const existente = acc.find((p) => p.id === item.id);
-        if (existente) {
-            existente.cantidad += 1;
+        // 1. Agrupamos el carrito que tienes en pantalla (que ya incluye lo cargado + lo nuevo)
+        const carritoAgrupado = carrito.reduce((acc: any[], item: any) => {
+            const existente = acc.find((p) => p.id === item.id);
+            if (existente) {
+                existente.cantidad += 1;
+            } else {
+                acc.push({ ...item, cantidad: 1 });
+            }
+            return acc;
+        }, []);
+
+        // 2. Buscamos si la mesa ya existe en la lista de pendientes
+        const pedidoExistente = pedidosPendientes.find(p => String(p.mesa) === String(mesa));
+
+        if (pedidoExistente) {
+            // --- ACTUALIZAR MESA ---
+            // Aquí enviamos el 'total' calculado de TODO el carrito actual
+            try {
+                const res = await fetch(`${API_PEDIDOS}/${pedidoExistente.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ...pedidoExistente,
+                        carrito: carritoAgrupado, // Enviamos la lista completa
+                        total: total,              // El total de 500 (200 pan + 300 gaseosa)
+                        productosNuevos: carrito.filter(item => !pedidoExistente.carrito.some((old: any) => old.id === item.id))
+                        // Lo anterior es opcional para el stock, lo importante es el total
+                    })
+                });
+                if (res.ok) alert(`Mesa ${mesa} actualizada a $${total.toLocaleString()}`);
+            } catch (e) {
+                alert("Error al actualizar");
+            }
         } else {
-            acc.push({ ...item, cantidad: 1 });
+            // --- CREAR NUEVO ---
+            try {
+                const res = await fetch(API_PEDIDOS, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        mesa,
+                        total,
+                        carrito: carritoAgrupado,
+                        estado: "pendiente"
+                    })
+                });
+                if (res.ok) alert("Pedido guardado ✅");
+            } catch (e) {
+                alert("Error al guardar");
+            }
         }
-        return acc;
-    }, []);
 
-    // 2. Buscamos si la mesa ya existe en la lista de pendientes
-    const pedidoExistente = pedidosPendientes.find(p => String(p.mesa) === String(mesa));
+        // LIMPIEZA TOTAL
+        setCarrito([]);
+        setMesa("");
+        cargarPedidosDesdeDB();
+        cargarProductos();
+    };
 
-    if (pedidoExistente) {
-        // --- ACTUALIZAR MESA ---
-        // Aquí enviamos el 'total' calculado de TODO el carrito actual
-        try {
-            const res = await fetch(`${API_PEDIDOS}/${pedidoExistente.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...pedidoExistente,
-                    carrito: carritoAgrupado, // Enviamos la lista completa
-                    total: total,              // El total de 500 (200 pan + 300 gaseosa)
-                    productosNuevos: carrito.filter(item => !pedidoExistente.carrito.some((old: any) => old.id === item.id)) 
-                    // Lo anterior es opcional para el stock, lo importante es el total
-                })
-            });
-            if (res.ok) alert(`Mesa ${mesa} actualizada a $${total.toLocaleString()}`);
-        } catch (e) {
-            alert("Error al actualizar");
-        }
-    } else {
-        // --- CREAR NUEVO ---
-        try {
-            const res = await fetch(API_PEDIDOS, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mesa,
-                    total,
-                    carrito: carritoAgrupado,
-                    estado: "pendiente"
-                })
-            });
-            if (res.ok) alert("Pedido guardado ✅");
-        } catch (e) {
-            alert("Error al guardar");
-        }
-    }
+    const cargarPedido = (pedido: any) => {
+        // IMPORTANTE: Al cargar, reconstruimos el carrito "plano" para que 
+        // la lógica de agregarAlCarrito y el cálculo de 'total' funcionen igual
+        const carritoReconstruido: any[] = [];
+        pedido.carrito.forEach((item: any) => {
+            for (let i = 0; i < item.cantidad; i++) {
+                carritoReconstruido.push({ ...item });
+            }
+        });
 
-    // LIMPIEZA TOTAL
-    setCarrito([]);
-    setMesa("");
-    cargarPedidosDesdeDB();
-    cargarProductos();
-};
-
-const cargarPedido = (pedido: any) => {
-    // IMPORTANTE: Al cargar, reconstruimos el carrito "plano" para que 
-    // la lógica de agregarAlCarrito y el cálculo de 'total' funcionen igual
-    const carritoReconstruido: any[] = [];
-    pedido.carrito.forEach((item: any) => {
-        for (let i = 0; i < item.cantidad; i++) {
-            carritoReconstruido.push({ ...item });
-        }
-    });
-
-    setCarrito(carritoReconstruido);
-    setMesa(pedido.mesa);
-    setMostrarPendientes(false);
-};
+        setCarrito(carritoReconstruido);
+        setMesa(pedido.mesa);
+        setMostrarPendientes(false);
+    };
 
 
     // --- PROCESAR VENTA FINAL ---
@@ -226,16 +261,28 @@ const cargarPedido = (pedido: any) => {
                 setMostrarPago(false);
                 setPasoPagoEfectivo(false);
                 setMontoRecibido("");
-                cargarProductos(); 
-                cargarPedidosDesdeDB(); 
+                cargarProductos();
+                cargarPedidosDesdeDB();
             }
         } catch (error) {
             alert("❌ Error de conexión al procesar la venta");
         }
     };
+    // Dentro de function Caja(), antes del return:
+    const productosOrdenados = [...productos].sort((a, b) => {
+        const aVinculo = a.subTipo && a.subTipo !== 'general' && a.subTipo !== 'pulpa';
+        const aAgotado = !aVinculo && a.cantidad <= 0;
+
+        const bVinculo = b.subTipo && b.subTipo !== 'general' && b.subTipo !== 'pulpa';
+        const bAgotado = !bVinculo && b.cantidad <= 0;
+
+        if (aAgotado && !bAgotado) return 1;
+        if (!aAgotado && bAgotado) return -1;
+        return 0;
+    });
 
     return {
-        productos,
+        productos: productosOrdenados,
         carrito,
         mesa,
         pedidosPendientes,

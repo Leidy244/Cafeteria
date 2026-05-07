@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Inventario from "./Inventario.tsx"; 
 import CierreCaja from "./cierrecaja.tsx"; 
-import { useVentas } from "../hooks/caja"; 
 import "../styles/admin.css";
 import Reporte from "./Reporte.tsx";
 import { useCaja } from "../hooks/cierrecaja.ts";

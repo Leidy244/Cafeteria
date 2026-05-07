@@ -1,4 +1,4 @@
-// Caja.tsx
+// Caja.ts
 import { useVentas } from "../hooks/caja";
 import "../styles/caja.css";
 
@@ -19,7 +19,6 @@ function Caja() {
         return agrupado;
     };
 
-    // Función para imprimir la factura (usa el diálogo nativo del sistema)
     const manejarImpresion = () => {
         window.print();
     };
@@ -68,10 +67,8 @@ function Caja() {
             {props.mostrarPago && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-
                         <button className="btn-cerrar-modal" onClick={() => props.setMostrarPago(false)}>✕</button>
                         <h2>Resumen de Pago</h2>
-
                         <div className="modal-monto-total">
                             <span className="modal-monto-label">Monto a cobrar</span>
                             <span className="modal-monto-valor">${props.total.toLocaleString()}</span>
@@ -80,7 +77,6 @@ function Caja() {
                         {!props.pasoPagoEfectivo ? (
                             <div className="metodos-pago">
                                 <p className="metodos-label">Selecciona el método de pago</p>
-
                                 <button
                                     className="metodo-pago-option"
                                     onClick={() => {
@@ -94,7 +90,6 @@ function Caja() {
                                         <span>Pago en billetes o monedas</span>
                                     </div>
                                 </button>
-
                                 <button
                                     className="metodo-pago-option"
                                     onClick={() => props.procesarPago("nequi")}
@@ -105,15 +100,12 @@ function Caja() {
                                         <span>Transferencia digital</span>
                                     </div>
                                 </button>
-
                                 <button className="btn btn-modal-cancelar" onClick={() => props.setMostrarPago(false)}>
                                     Cancelar
                                 </button>
                             </div>
-
                         ) : (
                             <div className="pago-efectivo-detalles">
-
                                 <div className="pago-input-group">
                                     <label className="pago-input-label">Monto recibido</label>
                                     <div className="turno-input-wrapper">
@@ -128,12 +120,10 @@ function Caja() {
                                         />
                                     </div>
                                 </div>
-
                                 <div className={`vuelto-display ${props.vuelto < 0 ? 'vuelto--negativo' : 'vuelto--positivo'}`}>
                                     <span className="vuelto-label">Vuelto</span>
                                     <span className="vuelto-valor">${props.vuelto.toLocaleString()}</span>
                                 </div>
-
                                 <div className="botones-finales">
                                     <button
                                         className="btn btn-confirmar"
@@ -146,10 +136,8 @@ function Caja() {
                                         Atrás
                                     </button>
                                 </div>
-
                             </div>
                         )}
-
                     </div>
                 </div>
             )}
@@ -166,41 +154,51 @@ function Caja() {
                 />
             </div>
 
-            {/* CATÁLOGO DE PRODUCTOS */}
+            {/* CATÁLOGO DE PRODUCTOS - LÓGICA DE AGOTADO CORREGIDA */}
             <div className="productos-grid">
-                {props.productos.map(p => (
-                    <div key={p.id} className={`producto-card ${p.cantidad <= 0 ? 'sin-stock' : ''}`}>
-                        <div className="producto-img-container">
-                            {p.imagen ? (
-                                <img
-                                    src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`}
-                                    alt={p.nombre}
-                                    className="producto-img"
-                                />
-                            ) : (
-                                <div className="sin-img">☕</div>
-                            )}
-                        </div>
+                {props.productos.map(p => {
+                    // Un producto tiene stock si: su cantidad > 0 O si está vinculado a una pulpa
+                    const tieneVinculo = p.subTipo && p.subTipo !== 'general' && p.subTipo !== 'pulpa';
+                    const estaRealmenteAgotado = !tieneVinculo && p.cantidad <= 0;
 
-                        <div className="producto-info">
-                            <strong>{p.nombre}</strong>
-                            <span>${p.precioVenta.toLocaleString()}</span>
-                            <button
-                                disabled={p.cantidad <= 0}
-                                onClick={() => props.agregarAlCarrito(p)}
-                            >
-                                {p.cantidad <= 0 ? "Agotado" : "Agregar"}
-                            </button>
+                    return (
+                        <div key={p.id} className={`producto-card ${estaRealmenteAgotado ? 'sin-stock' : ''}`}>
+                            <div className="producto-img-container">
+                                {p.imagen ? (
+                                    <img
+                                        src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`}
+                                        alt={p.nombre}
+                                        className="producto-img"
+                                    />
+                                ) : (
+                                    <div className="sin-img">☕</div>
+                                )}
+                            </div>
+
+                            <div className="producto-info">
+                                <strong>{p.nombre}</strong>
+                                <span>${p.precioVenta.toLocaleString()}</span>
+                                <button
+                                    disabled={estaRealmenteAgotado}
+                                    onClick={() => props.agregarAlCarrito(p)}
+                                >
+                                    {estaRealmenteAgotado ? "Agotado" : "Agregar"}
+                                </button>
+                                {tieneVinculo && (
+                                    <span className="text-[10px] text-zinc-500 italic block mt-1">
+                                        (Usa Pulpa)
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
-            {/* RESUMEN DEL CARRITO / SECCIÓN DE FACTURA */}
+            {/* RESUMEN DEL CARRITO */}
             {props.carrito.length > 0 && (
                 <div className="carrito-container">
-                    <div id="seccion-factura"> 
-                        {/* ID útil para estilos de impresión CSS */}
+                    <div id="seccion-factura">
                         <table className="tabla-carrito">
                             <thead>
                                 <tr>
@@ -229,12 +227,10 @@ function Caja() {
                                 ))}
                             </tbody>
                         </table>
-
                         <div className="total-seccion">
                             <h2>Total: ${props.total.toLocaleString()}</h2>
                         </div>
                     </div>
-
                     <div className="botones-accion">
                         <button onClick={props.guardarPedido} className="btn-listo">💾 Guardar Pedido</button>
                         <button onClick={manejarImpresion} className="btn-imprimir">🖨️ Imprimir Factura</button>
@@ -243,6 +239,7 @@ function Caja() {
                 </div>
             )}
         </div>
+        
     );
 }
 
