@@ -6,13 +6,18 @@ interface InventarioProps {
   tipo?: string;
 }
 
-function Inventario({ tipo = "venta" }: InventarioProps) {
+export function Inventario({ tipo = "venta" }: InventarioProps) {
   const { states, setters, actions } = useInventario();
-
-  // 1. Estado local para filtrar solo los insumos que son pulpas
+  const [modalAbierto, setModalAbierto] = useState(false);
   const [pulpasDisponibles, setPulpasDisponibles] = useState<any[]>([]);
+  
+  // ========== PAGINACIÓN ==========
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(5);
+  
+  // ========== BÚSQUEDA ==========
+  const [terminoBusqueda, setTerminoBusqueda] = useState("");
 
-  // 2. Efecto para actualizar el selector de pulpas cada vez que cambie la lista general
   useEffect(() => {
     if (states.lista) {
       const pulpas = states.lista.filter(
@@ -23,222 +28,453 @@ function Inventario({ tipo = "venta" }: InventarioProps) {
   }, [states.lista]);
 
   const esGestionInterna = tipo === "insumo" || tipo === "equipo";
+  
+  // ========== STOCK BAJO: Productos e Insumos SI, Equipos NO ==========
+  const mostrarAlertaStockBajo = tipo === "venta" || tipo === "insumo";
 
-  // Calculamos la lista con el stock real de las pulpas antes de renderizar
-  const listaFiltrada = states.lista
+  // ========== PROCESAR LISTA CON BÚSQUEDA ==========
+  let listaFiltrada = states.lista
     .filter((item: any) => item.tipo === tipo)
+    // FILTRO POR BÚSQUEDA (por nombre)
+    .filter((item: any) => {
+      if (terminoBusqueda === "") return true;
+      return item.nombre.toLowerCase().includes(terminoBusqueda.toLowerCase());
+    })
     .map((producto: any) => {
-      // Si el producto tiene un vínculo (ej: "Mango") y no es tipo insumo
+      let cantidadReal = producto.cantidad || 0;
+      let esVentaConPulpa = false;
+      let stockBajo = false;
+      
+      // Para productos de venta vinculados a pulpa
       if (tipo === "venta" && producto.subTipo && producto.subTipo !== 'general') {
-        // Buscamos en la lista completa el insumo que se llame igual al vínculo
         const pulpaVinculada = states.lista.find(
           (insumo: any) => insumo.tipo === "insumo" && insumo.nombre === producto.subTipo
         );
-
-        return {
-          ...producto,
-          // ✨ El stock ahora es el de la pulpa. Si no hay pulpa, es 0.
-          cantidad: pulpaVinculada ? pulpaVinculada.cantidad : 0,
-          esVentaConPulpa: true
-        };
+        if (pulpaVinculada) {
+          cantidadReal = pulpaVinculada.cantidad || 0;
+          esVentaConPulpa = true;
+        }
       }
-      return producto;
+      
+      // Calcular stock bajo (solo para Productos e Insumos)
+      if (mostrarAlertaStockBajo) {
+        stockBajo = cantidadReal <= 3;
+      }
+      
+      return {
+        ...producto,
+        cantidad: cantidadReal,
+        esVentaConPulpa,
+        stockBajo
+      };
     });
+
+  // ORDENAR: Los que tienen stock bajo aparecen primero (solo si muestra alerta)
+  if (mostrarAlertaStockBajo) {
+    listaFiltrada = listaFiltrada.sort((a, b) => {
+      if (a.stockBajo && !b.stockBajo) return -1;
+      if (!a.stockBajo && b.stockBajo) return 1;
+      return a.nombre.localeCompare(b.nombre);
+    });
+  }
+
+  // ========== LÓGICA DE PAGINACIÓN ==========
+  const totalItems = listaFiltrada.length;
+  const totalPaginas = Math.max(1, Math.ceil(totalItems / itemsPorPagina));
+  
+  // Resetear a página 1 cuando cambia la búsqueda
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [terminoBusqueda]);
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(1);
+    }
+  }, [totalItems, itemsPorPagina, paginaActual, totalPaginas]);
+
+  const indiceInicio = (paginaActual - 1) * itemsPorPagina;
+  const indiceFin = Math.min(indiceInicio + itemsPorPagina, totalItems);
+  const itemsPaginaActual = listaFiltrada.slice(indiceInicio, indiceFin);
+
+  const irPagina = (pagina: number) => {
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      setPaginaActual(pagina);
+    }
+  };
+
+  const cambiarItemsPorPagina = (cantidad: number) => {
+    setItemsPorPagina(cantidad);
+    setPaginaActual(1);
+  };
+
+  const handleGuardar = async () => {
+    await actions.guardarProducto(tipo);
+    setModalAbierto(false);
+    actions.limpiarFormulario();
+  };
+
+  const handleCancelar = () => {
+    setModalAbierto(false);
+    actions.limpiarFormulario();
+  };
+
+  const handleEditar = (item: any) => {
+    actions.cargarDatosEdicion(item);
+    setModalAbierto(true);
+  };
+
+  const limpiarBusqueda = () => {
+    setTerminoBusqueda("");
+  };
+
+  const titulos: Record<string, string> = {
+    venta: "Productos",
+    insumo: "Insumos Cafetería",
+    equipo: "Equipos y Materiales"
+  };
+
+  const subtitulos: Record<string, string> = {
+    venta: "🛒 Panel de Control de Productos",
+    insumo: "☕ Registro de Insumos Cafetería",
+    equipo: "🔌 Inventario de Equipos y Materiales"
+  };
+
+  // Contar productos con stock bajo
+  const cantidadStockBajo = listaFiltrada.filter((item: any) => item.stockBajo).length;
 
   return (
     <div className="inventario-container">
       <header className="inventario-header">
-        <p>
-          {tipo === "venta" && "🛒 Panel de Control de Productos"}
-          {tipo === "insumo" && "☕ Registro de Insumos Cafetería"}
-          {tipo === "equipo" && "🔌 Inventario de Equipos y Materiales"}
-        </p>
+        <p>{subtitulos[tipo]}</p>
+        <div className="header-actions">
+          {/* ===== BARRA DE BÚSQUEDA ===== */}
+          <div className="search-bar">
+            <i className="fas fa-search search-icon"></i>
+            <input
+              type="text"
+              placeholder="Buscar por nombre..."
+              value={terminoBusqueda}
+              onChange={(e) => setTerminoBusqueda(e.target.value)}
+              className="search-input"
+            />
+            {terminoBusqueda && (
+              <button className="search-clear" onClick={limpiarBusqueda}>
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
+          
+          <button 
+            className="btn-agregar"
+            onClick={() => {
+              actions.limpiarFormulario();
+              setModalAbierto(true);
+            }}
+          >
+            <i className="fas fa-plus"></i> Agregar {titulos[tipo]}
+          </button>
+        </div>
       </header>
 
-      <section className="form-card">
-        <div className="grid-form">
-          {/* Nombre del Producto/Insumo */}
-          <input
-            placeholder={esGestionInterna ? "Nombre del insumo/equipo" : "Nombre del producto (Ej: Jugo de Mango)"}
-            value={states.nombre}
-            onChange={(e) => setters.setNombre(e.target.value)}
-          />
-
-          {/* Costo Unitario */}
-          <input
-            placeholder={esGestionInterna ? "Costo Unitario ($)" : "Costo ($)"}
-            type="number"
-            value={states.precioIngreso}
-            onChange={(e) => setters.setPrecioIngreso(e.target.value)}
-          />
-
-          {/* Cantidad / Stock inicial */}
-          <input
-            placeholder={esGestionInterna ? "Cantidad (unidades)" : "Stock (Ej: 999)"}
-            type="number"
-            value={states.cantidad}
-            onChange={(e) => setters.setCantidad(e.target.value)}
-          />
-
-          {/* SELECTOR DE VINCULACIÓN (Solo para pestaña Venta) */}
-          {tipo === "venta" && (
-            <div className="flex flex-col">
-              <select
-                value={states.subTipoInsumo}
-                onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
-                className="w-full bg-zinc-800 text-white p-2 rounded-md border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="general"> Sin vínculo (Independiente)</option>
-                {pulpasDisponibles.map((pulpa) => (
-                  <option key={pulpa.id} value={pulpa.nombre}>
-                     Vincular a: {pulpa.nombre}
-                  </option>
-                ))}
-              </select>
-              <span className="text-[10px] text-pink-400 mt-1">
-                * Al vender este producto, se restará stock de la pulpa elegida.
-              </span>
+      {/* ===== MODAL ===== */}
+      {modalAbierto && (
+        <div className="modal-overlay" onClick={handleCancelar}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-edit"></i> {states.editandoId ? "Editar" : "Nuevo"} {titulos[tipo]}
+              </h3>
+              <button className="modal-close" onClick={handleCancelar}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
-          )}
 
-          {/* Precio de Venta (Solo para productos) */}
-          {!esGestionInterna && (
-            <input
-              placeholder="Precio Venta ($)"
-              type="number"
-              value={states.precioVenta}
-              onChange={(e) => setters.setPrecioVenta(e.target.value)}
-            />
-          )}
+            <div className="modal-body">
+              <div className="grid-form-modal">
+                <div className="input-group">
+                  <label><i className="fas fa-tag"></i> Nombre</label>
+                  <input
+                    value={states.nombre || ""}
+                    onChange={(e) => setters.setNombre(e.target.value)}
+                    placeholder={esGestionInterna ? "Ej: Café Especial" : "Ej: Jugo de Mango"}
+                  />
+                </div>
 
-          {/* Opciones de Gestión Interna */}
-          {esGestionInterna && (
-            <>
-              <select
-                value={states.metodoPago}
-                onChange={(e) => setters.setMetodoPago(e.target.value)}
-                className="w-full bg-zinc-800 text-white p-2 rounded-md border border-zinc-700"
-              >
-                <option value="efectivo">💵 Pago en Efectivo</option>
-                <option value="nequi">📱 Pago por Nequi</option>
-              </select>
+                <div className="input-group">
+                  <label><i className="fas fa-dollar-sign"></i> Costo Unitario ($)</label>
+                  <input
+                    type="number"
+                    value={states.precioIngreso || ""}
+                    onChange={(e) => setters.setPrecioIngreso(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
 
-              {tipo === "insumo" && (
-                <select
-                  value={states.subTipoInsumo}
-                  onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
-                  className="w-full bg-zinc-800 text-white p-2 rounded-md border border-zinc-700"
-                >
-                  <option value="general">Insumo General</option>
-                  <option value="pulpa">Pulpa de Fruta</option>
-                </select>
-              )}
-            </>
-          )}
+                <div className="input-group">
+                  <label><i className="fas fa-boxes"></i> {esGestionInterna ? "Cantidad (unidades)" : "Stock inicial"}</label>
+                  <input
+                    type="number"
+                    value={states.cantidad || ""}
+                    onChange={(e) => setters.setCantidad(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
 
-          <input
-            type={esGestionInterna ? "date" : "text"}
-            placeholder={esGestionInterna ? "" : "Descripción corta"}
-            className={esGestionInterna ? "input-fecha" : ""}
-            value={states.descripcion}
-            onChange={(e) => setters.setDescripcion(e.target.value)}
-          />
+                {tipo === "venta" && (
+                  <>
+                    <div className="input-group">
+                      <label><i className="fas fa-link"></i> Vincular a pulpa</label>
+                      <select
+                        value={states.subTipoInsumo || "general"}
+                        onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
+                      >
+                        <option value="general">Sin vínculo (Independiente)</option>
+                        {pulpasDisponibles.map((pulpa) => (
+                          <option key={pulpa.id} value={pulpa.nombre}>
+                            🔗 Vincular a: {pulpa.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <small>* Al vender, se restará stock de la pulpa</small>
+                    </div>
 
-          <div className="file-input-wrapper">
-            <label>🖼️ Imagen:</label>
-            <input
-              id="fileInput"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setters.setImagen(e.target.files?.[0] || null)}
-            />
+                    <div className="input-group">
+                      <label><i className="fas fa-tags"></i> Precio Venta ($)</label>
+                      <input
+                        type="number"
+                        value={states.precioVenta || ""}
+                        onChange={(e) => setters.setPrecioVenta(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {esGestionInterna && (
+                  <div className="input-group">
+                    <label><i className="fas fa-credit-card"></i> Método de Pago</label>
+                    <select
+                      value={states.metodoPago || "efectivo"}
+                      onChange={(e) => setters.setMetodoPago(e.target.value)}
+                    >
+                      <option value="efectivo">💵 Pago en Efectivo</option>
+                      <option value="nequi">📱 Pago por Nequi</option>
+                    </select>
+                  </div>
+                )}
+
+                {tipo === "insumo" && (
+                  <div className="input-group">
+                    <label><i className="fas fa-filter"></i> Tipo de Insumo</label>
+                    <select
+                      value={states.subTipoInsumo || "general"}
+                      onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
+                    >
+                      <option value="general">📦 Insumo General</option>
+                      <option value="pulpa">🥭 Pulpa de Fruta</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="input-group">
+                  <label><i className="fas fa-calendar-alt"></i> {esGestionInterna ? "Fecha" : "Descripción"}</label>
+                  <input
+                    type={esGestionInterna ? "date" : "text"}
+                    value={states.descripcion || ""}
+                    onChange={(e) => setters.setDescripcion(e.target.value)}
+                    placeholder={esGestionInterna ? "" : "Descripción corta"}
+                  />
+                </div>
+
+                <div className="input-group full-width">
+                  <label><i className="fas fa-image"></i> Imagen</label>
+                  <div className="file-input-wrapper-modal">
+                    <label className="file-label">
+                      <i className="fas fa-upload"></i> Seleccionar archivo
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: "none" }}
+                        onChange={(e) => setters.setImagen(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    <span className="file-name">
+                      {states.imagen?.name || "Sin archivos seleccionados"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-cancel-modal" onClick={handleCancelar}>
+                <i className="fas fa-times"></i> Cancelar
+              </button>
+              <button className="btn-save-modal" onClick={handleGuardar}>
+                <i className="fas fa-save"></i> {states.editandoId ? "Actualizar" : "Registrar"}
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="form-actions">
-          <button className="btn-save" onClick={() => actions.guardarProducto(tipo)}>
-            {states.editandoId ? "Actualizar" : "Registrar"}
-          </button>
-          {states.editandoId && (
-            <button className="btn-cancel" onClick={actions.limpiarFormulario}>
-              Cancelar
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* TABLA DE RESULTADOS */}
+      {/* ===== TABLA ===== */}
       <div className="table-container">
         <table className="inventario-table">
           <thead>
             <tr>
-              <th>Imagen</th>
-              <th>Nombre</th>
-              {esGestionInterna && <th>Cant.</th>}
-              <th>Costo Unit.</th>
-              {!esGestionInterna && <th>Venta</th>}
-              <th>{esGestionInterna ? "Fecha" : "Stock"}</th>
-              {!esGestionInterna && <th>Vínculo</th>}
-              <th>Acciones</th>
+              <th>IMAGEN</th>
+              <th>NOMBRE</th>
+              <th>CANT. / STOCK</th>
+              <th>COSTO UNIT.</th>
+              {!esGestionInterna && <th>PRECIO VENTA</th>}
+              <th>FECHA / REGISTRO</th>
+              {!esGestionInterna && <th>VÍNCULO</th>}
+              <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody>
-            {listaFiltrada.map((item: any) => (
-              <tr key={item.id}>
-                <td className="td-imagen">
-                  <div className="thumb-container">
-                    {item.imagen ? (
-                      <img src={`http://localhost:3001${item.imagen}`} alt={item.nombre} />
-                    ) : (
-                      "☕"
-                    )}
-                  </div>
-                </td>
-                <td className="txt-bold">
-                  {item.nombre}
-                  {item.subTipo === "pulpa" && (
-                    <span className="ml-2 px-2 py-0.5 bg-pink-900 text-pink-200 text-[10px] rounded-full">
-                      PULPA
-                    </span>
+            {itemsPaginaActual.length === 0 ? (
+              <tr className="empty-row">
+                <td colSpan={esGestionInterna ? 6 : 8}>
+                  <i className="fas fa-search"></i>
+                  <p>No se encontraron resultados para "{terminoBusqueda}"</p>
+                  {terminoBusqueda && (
+                    <button className="btn-clear-search" onClick={limpiarBusqueda}>
+                      Limpiar búsqueda
+                    </button>
                   )}
                 </td>
-
-                {esGestionInterna && (
+              </tr>
+            ) : (
+              itemsPaginaActual.map((item: any) => (
+                <tr key={item.id} className={item.stockBajo ? "stock-bajo-row" : ""}>
                   <td>
+                    <div className="thumb-container">
+                      {item.imagen ? (
+                        <img src={`http://localhost:3001${item.imagen}`} alt={item.nombre} />
+                      ) : (
+                        <i className="fas fa-image"></i>
+                      )}
+                    </div>
+                  </td>
+                  <td className="txt-bold">
+                    {item.nombre}
+                    {item.subTipo === "pulpa" && (
+                      <span className="badge-pulpa">PULPA</span>
+                    )}
+                    {item.stockBajo && (
+                      <span className="badge-stock-bajo">⚠️ Stock Bajo</span>
+                    )}
+                  </td>
+                  <td className={item.stockBajo ? "cantidad-baja" : ""}>
                     {item.cantidad}
                     {item.esVentaConPulpa && (
-                      <span className="text-[10px] block text-pink-400">(de Pulpa)</span>
+                      <span className="stock-hint">(de pulpa)</span>
                     )}
-                  </td>)}
-
-                <td>${Number(item.precioIngreso).toLocaleString()}</td>
-
-                {!esGestionInterna && (
-                  <td>${Number(item.precioVenta).toLocaleString()}</td>
-                )}
-
-                <td>{esGestionInterna ? item.descripcion : item.cantidad}</td>
-
-                {/* Columna de Vínculo: muestra a qué pulpa está atado el producto */}
-                {!esGestionInterna && (
-                  <td className="text-xs italic text-zinc-400">
-                    {item.subTipo !== "general" ? `🔗 ${item.subTipo}` : "---"}
                   </td>
-                )}
-
-                <td>
-                  <button className="btn-icon" onClick={() => actions.cargarDatosEdicion(item)}>
-                    ✏️
-                  </button>
-                  <button className="btn-icon" onClick={() => actions.eliminarProducto(item.id)}>
-                    🗑️
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  <td>${Number(item.precioIngreso || 0).toLocaleString()}</td>
+                  {!esGestionInterna && (
+                    <td className="val-green">${Number(item.precioVenta || 0).toLocaleString()}</td>
+                  )}
+                  <td>{item.descripcion || "---"}</td>
+                  {!esGestionInterna && (
+                    <td>
+                      {item.subTipo && item.subTipo !== "general" ? (
+                        <span className="vinculo-badge">🔗 {item.subTipo}</span>
+                      ) : (
+                        "---"
+                      )}
+                    </td>
+                  )}
+                  <td className="acciones-cell">
+                    <button className="btn-icon" onClick={() => handleEditar(item)} title="Editar">
+                      <i className="fas fa-edit"></i>
+                    </button>
+                    <button className="btn-icon btn-danger" onClick={() => actions.eliminarProducto(item.id)} title="Eliminar">
+                      <i className="fas fa-trash-alt"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* ===== PAGINACIÓN ===== */}
+      {totalItems > 0 && (
+        <div className="pagination-container-simple">
+          <div className="pagination-info">
+            Mostrando <strong>{indiceInicio + 1}</strong> - <strong>{indiceFin}</strong> de <strong>{totalItems}</strong> registros
+            {terminoBusqueda && (
+              <span className="search-result-info">
+                <i className="fas fa-filter"></i> Filtrado por: "{terminoBusqueda}"
+              </span>
+            )}
+            {mostrarAlertaStockBajo && cantidadStockBajo > 0 && (
+              <span className="stock-bajo-info">
+                <i className="fas fa-exclamation-triangle"></i> 
+                {cantidadStockBajo} productos con stock bajo
+              </span>
+            )}
+          </div>
+          
+          <div className="pagination-controls-simple">
+            <div className="pagination-rows-selector">
+              <span>Mostrar:</span>
+              <select 
+                value={itemsPorPagina} 
+                onChange={(e) => cambiarItemsPorPagina(Number(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span>por página</span>
+            </div>
+
+            <div className="pagination-buttons-simple">
+              <button 
+                className="pagination-btn-simple"
+                onClick={() => irPagina(1)}
+                disabled={paginaActual === 1}
+              >
+                <i className="fas fa-angle-double-left"></i>
+              </button>
+              <button 
+                className="pagination-btn-simple"
+                onClick={() => irPagina(paginaActual - 1)}
+                disabled={paginaActual === 1}
+              >
+                <i className="fas fa-angle-left"></i>
+              </button>
+              
+              <span className="pagination-current">
+                Página {paginaActual} de {totalPaginas}
+              </span>
+              
+              <button 
+                className="pagination-btn-simple"
+                onClick={() => irPagina(paginaActual + 1)}
+                disabled={paginaActual === totalPaginas}
+              >
+                <i className="fas fa-angle-right"></i>
+              </button>
+              <button 
+                className="pagination-btn-simple"
+                onClick={() => irPagina(totalPaginas)}
+                disabled={paginaActual === totalPaginas}
+              >
+                <i className="fas fa-angle-double-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

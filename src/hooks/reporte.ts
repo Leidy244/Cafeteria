@@ -20,42 +20,53 @@ export const useReporte = () => {
     obtenerReporte();
   }, []);
 
-  const exportarExcel = () => {
-    if (!data) return;
+ const exportarExcel = () => {
+  if (!data) return;
 
-    // 1. Formateamos las ventas para el Excel
-    const filasVentas = data.ventas.map((v: any) => ({
-      "Categoría": "INGRESO",
-      "Concepto/Producto": v.nombre,
-      "Cantidad": v.cant,
-      "Total": v.subtotal
-    }));
+  // 1. Formatear Ventas (Ingresos) - ¡Asegúrate de que esta variable esté aquí!
+  const ventasFormateadas = data.ventas.map((v: any) => ({
+    "Categoría": "INGRESO",
+    "Concepto": v.nombre,
+    "Método": (v.metodoPago || v.metodo_pago || "Efectivo").toUpperCase(),
+    "Cant": v.cant,
+    "Total": Number(v.subtotal) || 0
+  }));
 
-    // 2. Formateamos los gastos
-   const filasGastos = data.gastos.map((g: any) => ({
-  "Categoría": "EGRESO",
-  "Nombre/Insumo": g.nombreGasto || g.nombre, 
-  "Tipo": g.tipo,
-  "Total": -g.monto
-}));
+  // 2. Formatear Gastos (Egresos) - Con la limpieza de "COMPRA: "
+  const gastosFormateados = data.gastos.map((g: any) => ({
+    "Categoría": "EGRESO",
+    "Concepto": (g.nombreGasto || g.nombre || "Gasto").replace("COMPRA: ", ""),
+    "Método": (g.metodoPago || g.metodo_pago || "Efectivo").toUpperCase(),
+    "Cant": 1,
+    "Total": -(Number(g.total || g.monto) || 0)
+  }));
 
-    // 3. Unimos todo y añadimos una fila de Balance Final
-    const consolidado = [
-      ...filasVentas,
-      {}, // Fila vacía separadora
-      ...filasGastos,
-      {},
-      { "Concepto/Producto": "TOTAL VENTAS", "Total": data.totalVentas },
-      { "Concepto/Producto": "TOTAL GASTOS", "Total": -data.totalGastos },
-      { "Concepto/Producto": "UTILIDAD NETA", "Total": data.utilidadNeta }
-    ];
+  // 3. ORGANIZAR POR GRUPOS (Esto es lo que te da error si lo de arriba falta)
+  const gastosNequi = gastosFormateados.filter((g: any) => g.Método === 'NEQUI');
+  const gastosEfectivo = gastosFormateados.filter((g: any) => g.Método === 'EFECTIVO');
 
-    const ws = XLSX.utils.json_to_sheet(consolidado);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Balance Juyasia");
+  const ingresosNequi = ventasFormateadas.filter((v: any) => v.Método === 'NEQUI');
+  const ingresosEfectivo = ventasFormateadas.filter((v: any) => v.Método === 'EFECTIVO');
 
-    XLSX.writeFile(wb, `Reporte_Juyasia_${new Date().toLocaleDateString()}.xlsx`);
-  };
+  // 4. UNIR TODO EN EL ORDEN SOLICITADO
+  const reporteFinal = [
+    ...gastosNequi,
+    ...gastosEfectivo,
+    {}, // Espacio separador
+    ...ingresosNequi,
+    ...ingresosEfectivo,
+    {}, // Espacio separador
+    { "Concepto": "TOTAL VENTAS", "Total": Number(data.totalVentas) || 0 },
+    { "Concepto": "TOTAL GASTOS", "Total": -(Number(data.totalGastos) || 0) },
+    { "Concepto": "UTILIDAD NETA", "Total": Number(data.utilidadNeta) || 0 }
+  ];
+
+  // 5. Generar el archivo XLSX (Asegúrate de tener importado * as XLSX from 'xlsx')
+  const ws = XLSX.utils.json_to_sheet(reporteFinal);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+  XLSX.writeFile(wb, `Reporte_Juyasia_${new Date().toLocaleDateString()}.xlsx`);
+};
 
   return { data, exportarExcel };
 };

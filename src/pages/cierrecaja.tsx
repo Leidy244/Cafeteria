@@ -5,6 +5,7 @@ import '../styles/admin.css';
 const CierreCaja: React.FC = () => {
   const { cajaInfo, resumen, cargando, abrirCaja, cerrarCaja, refrescar } = useCaja();
   const [inputBase, setInputBase] = useState<string>("");
+  const [inputNequi, setInputNequi] = useState<string>("");
 
   if (cargando) {
     return (
@@ -16,127 +17,156 @@ const CierreCaja: React.FC = () => {
   }
 
   const handleAbrir = async () => {
-    const monto = Number(inputBase);
-    if (isNaN(monto) || monto < 0 || inputBase === "") {
-      alert("⚠️ Ingresa un monto inicial válido.");
+    const montoEfectivo = Number(inputBase);
+    const montoNequiValue = Number(inputNequi);
+
+    if (inputBase === "" || inputNequi === "" || montoEfectivo < 0 || montoNequiValue < 0) {
+      alert("⚠️ Por favor, ingresa los montos iniciales de Efectivo y Nequi.");
       return;
     }
-    const resultado = await abrirCaja(monto);
-    if (resultado.success) {
+
+    const resultado = await abrirCaja(montoEfectivo, montoNequiValue);
+    if (resultado?.success) {
       setInputBase("");
+      setInputNequi("");
     } else {
-      alert("❌ Error al abrir");
+      alert("❌ Error al abrir el turno.");
     }
   };
 
-  // --- VISTA A: CAJA CERRADA ---
+  // Vista: CAJA CERRADA
   if (!cajaInfo || cajaInfo.estado !== 'abierto') {
     return (
       <div className="caja-centrada-wrapper fade-in-up">
-        <div className="caja-header-text">
-          <span className="icon-main">🏪</span>
-          <h2>NUEVO TURNO</h2>
-          <p>No hay turno activo. Ingresa la base inicial.</p>
+        <div className="turno-icon-wrapper">
+          <i className="fas fa-store turno-icon"></i>
         </div>
+        <h2 className="turno-titulo">NUEVO TURNO</h2>
+        <p className="turno-subtitulo">Ingresa los saldos iniciales para comenzar la jornada</p>
 
-        <div className="form-card" style={{ maxWidth: '360px', width: '100%' }}>
-          <input
-            type="number"
-            className="grid-form"
-            style={{ textAlign: 'center', fontSize: '1.2rem', marginBottom: '16px' }}
-            placeholder="$ Monto base"
-            value={inputBase}
-            onChange={(e) => setInputBase(e.target.value)}
-            autoFocus
-          />
-          <button onClick={handleAbrir} className="btn-save" style={{ width: '100%' }}>
-            ABRIR CAJA AHORA
+        <div className="turno-form-card">
+          <div className="turno-input-group">
+            <label className="turno-input-label">
+              <i className="fas fa-money-bill-wave"></i> Base Efectivo (Cajón)
+            </label>
+            <div className="turno-input-wrapper">
+              <span className="turno-input-prefix">$</span>
+              <input
+                type="number"
+                className="turno-input"
+                placeholder="0"
+                value={inputBase}
+                onChange={(e) => setInputBase(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="turno-input-group">
+            <label className="turno-input-label">
+              <i className="fas fa-mobile-alt"></i> Saldo Nequi (Celular)
+            </label>
+            <div className="turno-input-wrapper">
+              <span className="turno-input-prefix">$</span>
+              <input
+                type="number"
+                className="turno-input"
+                placeholder="0"
+                value={inputNequi}
+                onChange={(e) => setInputNequi(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button onClick={handleAbrir} className="turno-btn-abrir">
+            <i className="fas fa-unlock-alt"></i> ABRIR TURNO AHORA
           </button>
         </div>
       </div>
     );
   }
 
-  // --- VISTA B: CAJA ABIERTA ---
-  const baseInicial = Number(cajaInfo.montoInicial || 0);
-  const ejecutarCierre = async () => {
-    if (window.confirm(`¿Cerrar turno con un total físico de $${resumen.totalAcumulado.toLocaleString()}?`)) {
-      // Solo enviamos el ID, ya que el backend calcula o borra lo necesario
-      const resultado = await cerrarCaja(cajaInfo.id);
+  // Vista: CAJA ABIERTA
+  const baseEfectivo = Number(cajaInfo.montoInicial || 0);
+  const baseNequi = Number(cajaInfo.montoNequi || 0);
 
-      // El hook ya devuelve { success: true } o { success: false }
-      if (resultado && resultado.success) {
+  const ejecutarCierre = async () => {
+    if (window.confirm(`¿Cerrar turno con $${resumen.totalAcumulado?.toLocaleString()} en efectivo físico?`)) {
+      const resultado = await cerrarCaja(cajaInfo.id);
+      if (resultado?.success) {
         alert("✅ Turno cerrado exitosamente.");
+        await refrescar();
       }
     }
   };
 
   return (
-    <div className="main-content fade-in-up">
-
-      {/* Cabecera */}
+    <div className="fade-in-up">
       <div className="caja-header-bar">
         <div>
-          <h1>💰 Control de Turno</h1>
-          <p>ID #{cajaInfo.id} | Abierta: {new Date(cajaInfo.fechaApertura).toLocaleTimeString()}</p>
+          <h1><i className="fas fa-cash-register"></i> Control de Turno</h1>
+          <p>ID #{cajaInfo.id} | Abierto: {new Date(cajaInfo.fechaApertura).toLocaleTimeString()}</p>
         </div>
-        <button onClick={refrescar} className="btn-refresh">🔄</button>
+        <button onClick={refrescar} className="btn-refresh">
+          <i className="fas fa-sync-alt"></i>
+        </button>
       </div>
 
-      {/* Grid de 3 tarjetas — se cierra ANTES de la tarjeta amarilla */}
       <div className="resumen-grid-3">
-
-        {/* Ingresos */}
         <div className="card-resumen-turno border-ingresos">
-          <p className="card-label-small">Ingresos</p>
+          <p className="card-label-small"><i className="fas fa-arrow-down"></i> Ingresos</p>
           <div className="card-fila">
-            <span>Base Inicial</span>
-            <span className="val-white">${baseInicial.toLocaleString()}</span>
+            <span>Bases (Efec + Nequi)</span>
+            <strong>${(baseEfectivo + baseNequi).toLocaleString()}</strong>
           </div>
           <div className="card-fila">
-            <span>Ventas (Efectivo)</span>
-            <span className="val-green">+${resumen.efectivo.toLocaleString()}</span>
+            <span>Ventas Efectivo</span>
+            <strong className="val-green">+${resumen.efectivo?.toLocaleString() || 0}</strong>
           </div>
           <div className="card-fila">
-            <span>Ventas (Nequi)</span>
-            <span className="val-blue">${resumen.nequi.toLocaleString()}</span>
+            <span>Ventas Nequi</span>
+            <strong className="val-blue">+${resumen.nequi?.toLocaleString() || 0}</strong>
           </div>
         </div>
 
-        {/* Egresos */}
         <div className="card-resumen-turno border-egresos">
-          <p className="card-label-small">Egresos / Compras</p>
+          <p className="card-label-small"><i className="fas fa-arrow-up"></i> Egresos / Compras</p>
           <div className="card-fila">
             <span>Insumos</span>
-            <span className="val-red">-${resumen.insumos.toLocaleString()}</span>
+            <strong className="val-red">-${resumen.insumos?.toLocaleString() || 0}</strong>
           </div>
           <div className="card-fila">
             <span>Equipos</span>
-            <span className="val-red">-${resumen.equipos.toLocaleString()}</span>
+            <strong className="val-red">-${resumen.equipos?.toLocaleString() || 0}</strong>
           </div>
         </div>
 
-        {/* Total ventas */}
         <div className="card-resumen-turno border-amarillo">
-          <p className="card-label-small" style={{ color: 'var(--text-yellow)' }}>Total Ventas</p>
-          <p className="monto-grande">${resumen.productos.toLocaleString()}</p>
-          <p className="monto-sub">Ventas brutas sin descontar gastos</p>
+          <p className="card-label-small"><i className="fas fa-chart-simple"></i> Total Ventas Brutas</p>
+          <p className="monto-grande">${resumen.productos?.toLocaleString() || 0}</p>
+          <p className="monto-sub">Solo productos vendidos</p>
         </div>
-
-      </div> {/* ← cierre correcto del grid */}
-
-      {/* Tarjeta balance — FUERA del grid */}
-      <div className="card-balance-amarilla">
-        <p className="bal-label">Efectivo Físico en Caja</p>
-        <p className="bal-monto">${resumen.totalAcumulado.toLocaleString()}</p>
-        <p className="bal-sub">Monto calculado: (Base + Ventas Efectivo) − Gastos</p>
       </div>
 
-      {/* Botón cierre */}
-      <button onClick={ejecutarCierre} className="btn-cerrar-turno">
-        Finalizar Jornada y Cerrar Turno
-      </button>
+      <div className="balance-doble">
+        <div className="card-balance">
+          <div className="bal-icon">💵</div>
+          <p className="bal-label">Efectivo Físico (Cajón)</p>
+          <p className="bal-monto">${resumen.totalAcumulado?.toLocaleString() || 0}</p>
+          <p className="bal-sub">Base Efec + Ventas Efec - Gastos Efec</p>
+        </div>
 
+        <div className="card-balance nequi-balance">
+          <div className="bal-icon">📱</div>
+          <p className="bal-label">Saldo en Nequi (Celular)</p>
+          <p className="bal-monto">${resumen.saldoNequiActual?.toLocaleString() || 0}</p>
+          <p className="bal-sub">Base Nequi + Ventas Nequi - Gastos Nequi</p>
+        </div>
+      </div>
+
+      <button onClick={ejecutarCierre} className="btn-cerrar-turno">
+        <i className="fas fa-lock"></i> Finalizar Jornada y Cerrar Turno
+      </button>
     </div>
   );
 };

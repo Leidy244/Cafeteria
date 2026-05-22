@@ -24,7 +24,6 @@ function Reporte() {
 
   return (
     <div className="inventario-container">
-
       <header className="reporte-header">
         <div className="reporte-header-title">
           <div className="reporte-header-icon">📊</div>
@@ -39,21 +38,32 @@ function Reporte() {
       </header>
 
       <div className="reporte-completo">
-
-        {/* INGRESOS */}
+        {/* SECCIÓN 1: INGRESOS (VENTAS) */}
         <div className="reporte-section">
           <h3 className="reporte-section-titulo reporte-section-titulo--verde">
             💰 Resumen de Ventas
           </h3>
           <table className="tabla-reporte">
             <thead>
-              <tr><th>Producto</th><th>Cant.</th><th>Total</th></tr>
+              <tr>
+                <th>Producto</th>
+                <th>Método</th>
+                <th>Cant.</th>
+                <th>Total</th>
+              </tr>
             </thead>
             <tbody>
               {data.ventas?.map((v: any, i: number) => (
                 <tr key={i}>
                   <td>{v.nombre}</td>
-                  {/* v.cant ahora tendrá la suma total de galletas vendidas */}
+                  <td className="txt-bold">
+                    {/* Agregamos una validación para ver qué está llegando realmente */}
+                    {(v.metodoPago?.toLowerCase() === 'nequi' || v.metodo_pago?.toLowerCase() === 'nequi') ? (
+                      <span style={{ color: '#818cf8', fontWeight: 'bold' }}> Nequi</span>
+                    ) : (
+                      <span style={{ color: '#4ade80', fontWeight: 'bold' }}>Efectivo</span>
+                    )}
+                  </td>
                   <td><span className="badge-cantidad">{v.cant}</span></td>
                   <td className="val-green">
                     ${(Number(v.subtotal) || 0).toLocaleString()}
@@ -64,14 +74,14 @@ function Reporte() {
           </table>
         </div>
 
-        {/* EGRESOS */}
-        {/* SECCIÓN 2: EGRESOS (INSUMOS Y EQUIPOS) */}
+        {/* SECCIÓN 2: EGRESOS (GASTOS) */}
         <div className="reporte-section" style={{ marginTop: '25px' }}>
-          <h3 style={{ color: '#ff4d4d' }}>💸 Detalle de Gastos (Egresos)</h3>
+          <h3 style={{ color: '#ff4d4d' }}> Detalle de Gastos (Egresos)</h3>
           <table className="tabla-reporte">
             <thead>
               <tr>
-                <th>NOMBRE</th> {/* Cabecera actualizada a NOMBRE */}
+                <th>NOMBRE</th>
+                <th>MÉTODO</th>
                 <th>TIPO</th>
                 <th>MONTO</th>
               </tr>
@@ -80,20 +90,29 @@ function Reporte() {
               {data.gastos?.length > 0 ? (
                 data.gastos.map((g: any, i: number) => (
                   <tr key={i}>
-                    {/* Usamos g.nombre para mostrar el nombre específico */}
-                    <td className="txt-bold">{g.nombre || "Gasto sin nombre"}</td>
+                    <td className="txt-bold">
+                      {(g.nombre || "Gasto sin nombre").replace("COMPRA: ", "")}
+                    </td>
+
+                    <td className="txt-bold">
+                      {(g.metodoPago?.toLowerCase() === 'nequi' || g.metodo_pago?.toLowerCase() === 'nequi') ? (
+                        <span style={{ color: '#818cf8', fontWeight: 'bold' }}> Nequi</span>
+                      ) : (
+                        <span style={{ color: '#4ade80', fontWeight: 'bold' }}> Efectivo</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${g.tipo}`}>
                         {g.tipo.toUpperCase()}
                       </span>
                     </td>
                     <td style={{ color: '#ff4d4d', fontWeight: 'bold' }}>
-                      -${Number(g.monto).toLocaleString()}
+                      -${(Number(g.total || g.monto) || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={3}>No hay gastos registrados en este turno</td></tr>
+                <tr><td colSpan={4}>No hay gastos registrados en este turno</td></tr>
               )}
             </tbody>
           </table>
@@ -117,7 +136,6 @@ function Reporte() {
             </span>
           </div>
         </div>
-
       </div>
     </div>
   );
