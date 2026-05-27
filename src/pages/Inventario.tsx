@@ -10,12 +10,10 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
   const { states, setters, actions } = useInventario();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [pulpasDisponibles, setPulpasDisponibles] = useState<any[]>([]);
-  
-  // ========== PAGINACIÓN ==========
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null); // ← NUEVO
+
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina, setItemsPorPagina] = useState(5);
-  
-  // ========== BÚSQUEDA ==========
   const [terminoBusqueda, setTerminoBusqueda] = useState("");
 
   useEffect(() => {
@@ -28,14 +26,10 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
   }, [states.lista]);
 
   const esGestionInterna = tipo === "insumo" || tipo === "equipo";
-  
-  // ========== STOCK BAJO: Productos e Insumos SI, Equipos NO ==========
   const mostrarAlertaStockBajo = tipo === "venta" || tipo === "insumo";
 
-  // ========== PROCESAR LISTA CON BÚSQUEDA ==========
   let listaFiltrada = states.lista
     .filter((item: any) => item.tipo === tipo)
-    // FILTRO POR BÚSQUEDA (por nombre)
     .filter((item: any) => {
       if (terminoBusqueda === "") return true;
       return item.nombre.toLowerCase().includes(terminoBusqueda.toLowerCase());
@@ -44,8 +38,7 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
       let cantidadReal = producto.cantidad || 0;
       let esVentaConPulpa = false;
       let stockBajo = false;
-      
-      // Para productos de venta vinculados a pulpa
+
       if (tipo === "venta" && producto.subTipo && producto.subTipo !== 'general') {
         const pulpaVinculada = states.lista.find(
           (insumo: any) => insumo.tipo === "insumo" && insumo.nombre === producto.subTipo
@@ -55,21 +48,14 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
           esVentaConPulpa = true;
         }
       }
-      
-      // Calcular stock bajo (solo para Productos e Insumos)
+
       if (mostrarAlertaStockBajo) {
-        stockBajo = cantidadReal <= 3;
+        stockBajo = cantidadReal <= 5;
       }
-      
-      return {
-        ...producto,
-        cantidad: cantidadReal,
-        esVentaConPulpa,
-        stockBajo
-      };
+
+      return { ...producto, cantidad: cantidadReal, esVentaConPulpa, stockBajo };
     });
 
-  // ORDENAR: Los que tienen stock bajo aparecen primero (solo si muestra alerta)
   if (mostrarAlertaStockBajo) {
     listaFiltrada = listaFiltrada.sort((a, b) => {
       if (a.stockBajo && !b.stockBajo) return -1;
@@ -78,19 +64,12 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
     });
   }
 
-  // ========== LÓGICA DE PAGINACIÓN ==========
   const totalItems = listaFiltrada.length;
   const totalPaginas = Math.max(1, Math.ceil(totalItems / itemsPorPagina));
-  
-  // Resetear a página 1 cuando cambia la búsqueda
-  useEffect(() => {
-    setPaginaActual(1);
-  }, [terminoBusqueda]);
 
+  useEffect(() => { setPaginaActual(1); }, [terminoBusqueda]);
   useEffect(() => {
-    if (paginaActual > totalPaginas) {
-      setPaginaActual(1);
-    }
+    if (paginaActual > totalPaginas) setPaginaActual(1);
   }, [totalItems, itemsPorPagina, paginaActual, totalPaginas]);
 
   const indiceInicio = (paginaActual - 1) * itemsPorPagina;
@@ -98,9 +77,7 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
   const itemsPaginaActual = listaFiltrada.slice(indiceInicio, indiceFin);
 
   const irPagina = (pagina: number) => {
-    if (pagina >= 1 && pagina <= totalPaginas) {
-      setPaginaActual(pagina);
-    }
+    if (pagina >= 1 && pagina <= totalPaginas) setPaginaActual(pagina);
   };
 
   const cambiarItemsPorPagina = (cantidad: number) => {
@@ -124,9 +101,18 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
     setModalAbierto(true);
   };
 
-  const limpiarBusqueda = () => {
-    setTerminoBusqueda("");
+  // ← NUEVO: doble clic sin window.confirm
+  const handleEliminar = (id: number) => {
+    if (eliminandoId === id) {
+      actions.eliminarProducto(id);
+      setEliminandoId(null);
+    } else {
+      setEliminandoId(id);
+      setTimeout(() => setEliminandoId(null), 4000);
+    }
   };
+
+  const limpiarBusqueda = () => setTerminoBusqueda("");
 
   const titulos: Record<string, string> = {
     venta: "Productos",
@@ -140,7 +126,6 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
     equipo: "🔌 Inventario de Equipos y Materiales"
   };
 
-  // Contar productos con stock bajo
   const cantidadStockBajo = listaFiltrada.filter((item: any) => item.stockBajo).length;
 
   return (
@@ -148,7 +133,6 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
       <header className="inventario-header">
         <p>{subtitulos[tipo]}</p>
         <div className="header-actions">
-          {/* ===== BARRA DE BÚSQUEDA ===== */}
           <div className="search-bar">
             <i className="fas fa-search search-icon"></i>
             <input
@@ -164,20 +148,12 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
               </button>
             )}
           </div>
-          
-          <button 
-            className="btn-agregar"
-            onClick={() => {
-              actions.limpiarFormulario();
-              setModalAbierto(true);
-            }}
-          >
+          <button className="btn-agregar" onClick={() => { actions.limpiarFormulario(); setModalAbierto(true); }}>
             <i className="fas fa-plus"></i> Agregar {titulos[tipo]}
           </button>
         </div>
       </header>
 
-      {/* ===== MODAL ===== */}
       {modalAbierto && (
         <div className="modal-overlay" onClick={handleCancelar}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -189,7 +165,6 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-
             <div className="modal-body">
               <div className="grid-form-modal">
                 <div className="input-group">
@@ -200,83 +175,50 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                     placeholder={esGestionInterna ? "Ej: Café Especial" : "Ej: Jugo de Mango"}
                   />
                 </div>
-
                 <div className="input-group">
                   <label><i className="fas fa-dollar-sign"></i> Costo Unitario ($)</label>
-                  <input
-                    type="number"
-                    value={states.precioIngreso || ""}
-                    onChange={(e) => setters.setPrecioIngreso(e.target.value)}
-                    placeholder="0"
-                  />
+                  <input type="number" value={states.precioIngreso || ""} onChange={(e) => setters.setPrecioIngreso(e.target.value)} placeholder="0" />
                 </div>
-
                 <div className="input-group">
                   <label><i className="fas fa-boxes"></i> {esGestionInterna ? "Cantidad (unidades)" : "Stock inicial"}</label>
-                  <input
-                    type="number"
-                    value={states.cantidad || ""}
-                    onChange={(e) => setters.setCantidad(e.target.value)}
-                    placeholder="0"
-                  />
+                  <input type="number" value={states.cantidad || ""} onChange={(e) => setters.setCantidad(e.target.value)} placeholder="0" />
                 </div>
-
                 {tipo === "venta" && (
                   <>
                     <div className="input-group">
                       <label><i className="fas fa-link"></i> Vincular a pulpa</label>
-                      <select
-                        value={states.subTipoInsumo || "general"}
-                        onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
-                      >
+                      <select value={states.subTipoInsumo || "general"} onChange={(e) => setters.setSubTipoInsumo(e.target.value)}>
                         <option value="general">Sin vínculo (Independiente)</option>
                         {pulpasDisponibles.map((pulpa) => (
-                          <option key={pulpa.id} value={pulpa.nombre}>
-                            🔗 Vincular a: {pulpa.nombre}
-                          </option>
+                          <option key={pulpa.id} value={pulpa.nombre}>🔗 Vincular a: {pulpa.nombre}</option>
                         ))}
                       </select>
                       <small>* Al vender, se restará stock de la pulpa</small>
                     </div>
-
                     <div className="input-group">
                       <label><i className="fas fa-tags"></i> Precio Venta ($)</label>
-                      <input
-                        type="number"
-                        value={states.precioVenta || ""}
-                        onChange={(e) => setters.setPrecioVenta(e.target.value)}
-                        placeholder="0"
-                      />
+                      <input type="number" value={states.precioVenta || ""} onChange={(e) => setters.setPrecioVenta(e.target.value)} placeholder="0" />
                     </div>
                   </>
                 )}
-
                 {esGestionInterna && (
                   <div className="input-group">
                     <label><i className="fas fa-credit-card"></i> Método de Pago</label>
-                    <select
-                      value={states.metodoPago || "efectivo"}
-                      onChange={(e) => setters.setMetodoPago(e.target.value)}
-                    >
+                    <select value={states.metodoPago || "efectivo"} onChange={(e) => setters.setMetodoPago(e.target.value)}>
                       <option value="efectivo">💵 Pago en Efectivo</option>
                       <option value="nequi">📱 Pago por Nequi</option>
                     </select>
                   </div>
                 )}
-
                 {tipo === "insumo" && (
                   <div className="input-group">
                     <label><i className="fas fa-filter"></i> Tipo de Insumo</label>
-                    <select
-                      value={states.subTipoInsumo || "general"}
-                      onChange={(e) => setters.setSubTipoInsumo(e.target.value)}
-                    >
-                      <option value="general">📦 Insumo General</option>
-                      <option value="pulpa">🥭 Pulpa de Fruta</option>
+                    <select value={states.subTipoInsumo || "general"} onChange={(e) => setters.setSubTipoInsumo(e.target.value)}>
+                      <option value="general">Insumo General</option>
+                      <option value="pulpa">Pulpa de Fruta</option>
                     </select>
                   </div>
                 )}
-
                 <div className="input-group">
                   <label><i className="fas fa-calendar-alt"></i> {esGestionInterna ? "Fecha" : "Descripción"}</label>
                   <input
@@ -286,27 +228,18 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                     placeholder={esGestionInterna ? "" : "Descripción corta"}
                   />
                 </div>
-
                 <div className="input-group full-width">
                   <label><i className="fas fa-image"></i> Imagen</label>
                   <div className="file-input-wrapper-modal">
                     <label className="file-label">
                       <i className="fas fa-upload"></i> Seleccionar archivo
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        style={{ display: "none" }}
-                        onChange={(e) => setters.setImagen(e.target.files?.[0] || null)}
-                      />
+                      <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setters.setImagen(e.target.files?.[0] || null)} />
                     </label>
-                    <span className="file-name">
-                      {states.imagen?.name || "Sin archivos seleccionados"}
-                    </span>
+                    <span className="file-name">{states.imagen?.name || "Sin archivos seleccionados"}</span>
                   </div>
                 </div>
               </div>
             </div>
-
             <div className="modal-footer">
               <button className="btn-cancel-modal" onClick={handleCancelar}>
                 <i className="fas fa-times"></i> Cancelar
@@ -319,7 +252,6 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
         </div>
       )}
 
-      {/* ===== TABLA ===== */}
       <div className="table-container">
         <table className="inventario-table">
           <thead>
@@ -341,9 +273,7 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                   <i className="fas fa-search"></i>
                   <p>No se encontraron resultados para "{terminoBusqueda}"</p>
                   {terminoBusqueda && (
-                    <button className="btn-clear-search" onClick={limpiarBusqueda}>
-                      Limpiar búsqueda
-                    </button>
+                    <button className="btn-clear-search" onClick={limpiarBusqueda}>Limpiar búsqueda</button>
                   )}
                 </td>
               </tr>
@@ -352,27 +282,19 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                 <tr key={item.id} className={item.stockBajo ? "stock-bajo-row" : ""}>
                   <td>
                     <div className="thumb-container">
-                      {item.imagen ? (
-                        <img src={`http://localhost:3001${item.imagen}`} alt={item.nombre} />
-                      ) : (
-                        <i className="fas fa-image"></i>
-                      )}
+                      {item.imagen
+                        ? <img src={`http://localhost:3001${item.imagen}`} alt={item.nombre} />
+                        : <i className="fas fa-image"></i>}
                     </div>
                   </td>
                   <td className="txt-bold">
                     {item.nombre}
-                    {item.subTipo === "pulpa" && (
-                      <span className="badge-pulpa">PULPA</span>
-                    )}
-                    {item.stockBajo && (
-                      <span className="badge-stock-bajo">⚠️ Stock Bajo</span>
-                    )}
+                    {item.subTipo === "pulpa" && <span className="badge-pulpa">PULPA</span>}
+                    {item.stockBajo && <span className="badge-stock-bajo">⚠️ Stock Bajo</span>}
                   </td>
                   <td className={item.stockBajo ? "cantidad-baja" : ""}>
                     {item.cantidad}
-                    {item.esVentaConPulpa && (
-                      <span className="stock-hint">(de pulpa)</span>
-                    )}
+                    {item.esVentaConPulpa && <span className="stock-hint">(de pulpa)</span>}
                   </td>
                   <td>${Number(item.precioIngreso || 0).toLocaleString()}</td>
                   {!esGestionInterna && (
@@ -381,19 +303,24 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
                   <td>{item.descripcion || "---"}</td>
                   {!esGestionInterna && (
                     <td>
-                      {item.subTipo && item.subTipo !== "general" ? (
-                        <span className="vinculo-badge">🔗 {item.subTipo}</span>
-                      ) : (
-                        "---"
-                      )}
+                      {item.subTipo && item.subTipo !== "general"
+                        ? <span className="vinculo-badge">🔗 {item.subTipo}</span>
+                        : "---"}
                     </td>
                   )}
                   <td className="acciones-cell">
                     <button className="btn-icon" onClick={() => handleEditar(item)} title="Editar">
                       <i className="fas fa-edit"></i>
                     </button>
-                    <button className="btn-icon btn-danger" onClick={() => actions.eliminarProducto(item.id)} title="Eliminar">
-                      <i className="fas fa-trash-alt"></i>
+                    {/* ← BOTÓN CON DOBLE CLIC, sin window.confirm */}
+                    <button
+                      className={`btn-icon btn-danger ${eliminandoId === item.id ? 'btn-danger--confirmar' : ''}`}
+                      onClick={() => handleEliminar(item.id)}
+                      title={eliminandoId === item.id ? "Confirmar eliminación" : "Eliminar"}
+                    >
+                      {eliminandoId === item.id
+                        ? <><i className="fas fa-exclamation-triangle"></i> ¿Confirmar?</>
+                        : <i className="fas fa-trash-alt"></i>}
                     </button>
                   </td>
                 </tr>
@@ -403,7 +330,6 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
         </table>
       </div>
 
-      {/* ===== PAGINACIÓN ===== */}
       {totalItems > 0 && (
         <div className="pagination-container-simple">
           <div className="pagination-info">
@@ -415,19 +341,14 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
             )}
             {mostrarAlertaStockBajo && cantidadStockBajo > 0 && (
               <span className="stock-bajo-info">
-                <i className="fas fa-exclamation-triangle"></i> 
-                {cantidadStockBajo} productos con stock bajo
+                <i className="fas fa-exclamation-triangle"></i> {cantidadStockBajo} productos con stock bajo
               </span>
             )}
           </div>
-          
           <div className="pagination-controls-simple">
             <div className="pagination-rows-selector">
               <span>Mostrar:</span>
-              <select 
-                value={itemsPorPagina} 
-                onChange={(e) => cambiarItemsPorPagina(Number(e.target.value))}
-              >
+              <select value={itemsPorPagina} onChange={(e) => cambiarItemsPorPagina(Number(e.target.value))}>
                 <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={15}>15</option>
@@ -436,39 +357,18 @@ export function Inventario({ tipo = "venta" }: InventarioProps) {
               </select>
               <span>por página</span>
             </div>
-
             <div className="pagination-buttons-simple">
-              <button 
-                className="pagination-btn-simple"
-                onClick={() => irPagina(1)}
-                disabled={paginaActual === 1}
-              >
+              <button className="pagination-btn-simple" onClick={() => irPagina(1)} disabled={paginaActual === 1}>
                 <i className="fas fa-angle-double-left"></i>
               </button>
-              <button 
-                className="pagination-btn-simple"
-                onClick={() => irPagina(paginaActual - 1)}
-                disabled={paginaActual === 1}
-              >
+              <button className="pagination-btn-simple" onClick={() => irPagina(paginaActual - 1)} disabled={paginaActual === 1}>
                 <i className="fas fa-angle-left"></i>
               </button>
-              
-              <span className="pagination-current">
-                Página {paginaActual} de {totalPaginas}
-              </span>
-              
-              <button 
-                className="pagination-btn-simple"
-                onClick={() => irPagina(paginaActual + 1)}
-                disabled={paginaActual === totalPaginas}
-              >
+              <span className="pagination-current">Página {paginaActual} de {totalPaginas}</span>
+              <button className="pagination-btn-simple" onClick={() => irPagina(paginaActual + 1)} disabled={paginaActual === totalPaginas}>
                 <i className="fas fa-angle-right"></i>
               </button>
-              <button 
-                className="pagination-btn-simple"
-                onClick={() => irPagina(totalPaginas)}
-                disabled={paginaActual === totalPaginas}
-              >
+              <button className="pagination-btn-simple" onClick={() => irPagina(totalPaginas)} disabled={paginaActual === totalPaginas}>
                 <i className="fas fa-angle-double-right"></i>
               </button>
             </div>

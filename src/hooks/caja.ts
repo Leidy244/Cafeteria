@@ -6,22 +6,16 @@ const API_VENTAS = "http://localhost:3001/ventas";
 const API_PEDIDOS = "http://localhost:3001/pedidos";
 
 export const useVentas = () => {
-    // 1. ESTADOS DE PRODUCTOS E INVENTARIO
     const [productos, setProductos] = useState<any[]>([]);
     const [carrito, setCarrito] = useState<any[]>([]);
-
-    // 2. ESTADOS DE PEDIDOS Y MESAS
     const [mesa, setMesa] = useState<string>("");
     const [pedidosPendientes, setPedidosPendientes] = useState<any[]>([]);
     const [mostrarPendientes, setMostrarPendientes] = useState(false);
-
-    // 3. ESTADOS DE PAGO Y MODAL
     const [mostrarPago, setMostrarPago] = useState(false);
     const [metodoPago, setMetodoPago] = useState<"efectivo" | "nequi">("efectivo");
     const [pasoPagoEfectivo, setPasoPagoEfectivo] = useState(false);
     const [montoRecibido, setMontoRecibido] = useState<string>("");
 
-    // 1. cargarProductos 
     const cargarProductos = useCallback(async () => {
         try {
             const res = await fetch(API_PRODUCTOS);
@@ -31,7 +25,9 @@ export const useVentas = () => {
             const ventasBase = data.filter((p: any) => p.tipo === "venta");
 
             const ventasConStockReal = ventasBase.map((producto: any) => {
-                const tieneVinculo = producto.subTipo && producto.subTipo !== 'general' && producto.subTipo !== 'pulpa';
+                const tieneVinculo = producto.subTipo &&
+                    producto.subTipo !== 'general' &&
+                    producto.subTipo !== 'pulpa';
 
                 if (tieneVinculo) {
                     const pulpaAsociada = insumos.find((i: any) =>
@@ -72,12 +68,23 @@ export const useVentas = () => {
         cargarPedidosDesdeDB();
     }, [cargarProductos, cargarPedidosDesdeDB]);
 
+    // ── HELPER: stock disponible real descontando lo que ya está en carrito ──
+    const stockDisponible = (producto: any): number => {
+        const cantidadEnCarrito = carrito.filter(item => item.id === producto.id).length;
+        return producto.cantidad - cantidadEnCarrito;
+    };
+
     // --- LÓGICA DE CARRITO ---
     const agregarAlCarrito = (producto: any) => {
-        const cantidadEnCarrito = carrito.filter(item => item.id === producto.id).length;
-        const tieneVinculo = producto.subTipo && producto.subTipo !== 'general' && producto.subTipo !== 'pulpa';
+        // Sin stock en absoluto
+        if (producto.cantidad <= 0) {
+            showToast(`⚠️ Sin stock disponible de ${producto.nombre}.`, "warning");
+            return;
+        }
 
-        if (!tieneVinculo && cantidadEnCarrito >= producto.cantidad) {
+        // Stock disponible considerando lo ya agregado al carrito
+        const disponible = stockDisponible(producto);
+        if (disponible <= 0) {
             showToast(`⚠️ No hay más stock disponible de ${producto.nombre}.`, "warning");
             return;
         }
@@ -89,21 +96,23 @@ export const useVentas = () => {
     const cambiarCantidad = (id: number, delta: number) => {
         if (delta > 0) {
             const productoOriginal = productos.find(p => p.id === id);
-            const cantidadActual = carrito.filter(item => item.id === id).length;
-            const tieneVinculo = productoOriginal?.subTipo &&
-                productoOriginal.subTipo !== 'general' &&
-                productoOriginal.subTipo !== 'pulpa';
 
-            if (!tieneVinculo && productoOriginal && cantidadActual >= productoOriginal.cantidad) {
-                showToast(`⚠️ Solo hay ${productoOriginal.cantidad} unidades disponibles de ${productoOriginal.nombre}.`, "warning");
+            if (!productoOriginal) return;
+
+            // Bloqueamos siempre, tanto vinculados a pulpa como normales
+            const cantidadEnCarrito = carrito.filter(item => item.id === id).length;
+            if (cantidadEnCarrito >= productoOriginal.cantidad) {
+                showToast(
+                    `⚠️ Solo hay ${productoOriginal.cantidad} unidades disponibles de ${productoOriginal.nombre}.`,
+                    "warning"
+                );
                 return;
             }
 
-            const item = productos.find(p => p.id === id);
-            if (item) setCarrito([...carrito, item]);
+            setCarrito([...carrito, { ...productoOriginal }]);
         } else {
             const nuevoCarrito = [...carrito];
-            const index = carrito.findIndex(item => item.id === id);
+            const index = nuevoCarrito.findIndex(item => item.id === id);
             if (index !== -1) {
                 nuevoCarrito.splice(index, 1);
                 setCarrito(nuevoCarrito);
@@ -279,13 +288,9 @@ export const useVentas = () => {
         }
     };
 
-    // Ordenar productos
     const productosOrdenados = [...productos].sort((a, b) => {
-        const aVinculo = a.subTipo && a.subTipo !== 'general' && a.subTipo !== 'pulpa';
-        const aAgotado = !aVinculo && a.cantidad <= 0;
-        const bVinculo = b.subTipo && b.subTipo !== 'general' && b.subTipo !== 'pulpa';
-        const bAgotado = !bVinculo && b.cantidad <= 0;
-
+        const aAgotado = a.cantidad <= 0;
+        const bAgotado = b.cantidad <= 0;
         if (aAgotado && !bAgotado) return 1;
         if (!aAgotado && bAgotado) return -1;
         return 0;
@@ -294,7 +299,7 @@ export const useVentas = () => {
     return {
         productos: productosOrdenados,
         carrito,
-        setCarrito, // ← AGREGADO: exportar setCarrito
+        setCarrito,
         mesa,
         pedidosPendientes,
         mostrarPendientes,

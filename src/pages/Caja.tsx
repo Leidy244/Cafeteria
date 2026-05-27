@@ -5,7 +5,8 @@ import "../styles/caja.css";
 function Caja() {
     const props = useVentas();
     const [modalCargarMesa, setModalCargarMesa] = useState<any>(null);
-    const [modalAccionesPedido, setModalAccionesPedido] = useState<any>(null); // 👈 NUEVO
+    const [modalAccionesPedido, setModalAccionesPedido] = useState<any>(null);
+    const [busqueda, setBusqueda] = useState("");
 
     const carritoAgrupado = () => {
         const agrupado: any[] = [];
@@ -18,9 +19,8 @@ function Caja() {
 
     const manejarImpresion = () => window.print();
 
-    // Al hacer clic en "Cargar" → abre modal de acciones en lugar de cargar directo
     const handleCargarPedido = (pedido: any) => {
-        setModalAccionesPedido(pedido); // 👈 CAMBIADO
+        setModalAccionesPedido(pedido);
     };
 
     const confirmarCargarPedido = () => {
@@ -30,11 +30,9 @@ function Caja() {
 
     const cancelarCargarPedido = () => setModalCargarMesa(null);
 
-    // Acciones desde el modal de pedido guardado
     const accionCargarYGuardar = async () => {
         props.cargarPedido(modalAccionesPedido);
         setModalAccionesPedido(null);
-        // Pequeño delay para que el carrito se hidrate antes de guardar
         setTimeout(() => props.guardarPedido(), 100);
     };
 
@@ -50,9 +48,13 @@ function Caja() {
         setTimeout(() => window.print(), 300);
     };
 
+    const productosFiltrados = props.productos.filter(p =>
+        p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    );
+
     return (
         <div className="contenedor">
-            <h1 className="titulo"><span className="titulo-texto">Juvasia</span></h1>
+            <h1 className="titulo"><span className="titulo-texto">Juyasia</span></h1>
 
             <button
                 className="btn-pendientes-toggle"
@@ -85,7 +87,7 @@ function Caja() {
                 </div>
             )}
 
-            {/* ===== MODAL DE ACCIONES DEL PEDIDO (NUEVO) ===== */}
+            {/* ===== MODAL DE ACCIONES DEL PEDIDO ===== */}
             {modalAccionesPedido && (
                 <div className="modal-acciones-overlay" onClick={() => setModalAccionesPedido(null)}>
                     <div className="modal-acciones" onClick={e => e.stopPropagation()}>
@@ -95,7 +97,6 @@ function Caja() {
                         <span className="modal-acciones-icono">📋</span>
                         <h2>Mesa {modalAccionesPedido.mesa}</h2>
 
-                        {/* ── TABLA DE PRODUCTOS ── */}
                         <div className="modal-acciones-tabla-wrapper">
                             <table className="modal-acciones-tabla">
                                 <thead>
@@ -117,7 +118,6 @@ function Caja() {
                             </table>
                         </div>
 
-                        {/* ── TOTAL ── */}
                         <div className="modal-acciones-total">
                             <span>Total</span>
                             <strong>${modalAccionesPedido.total.toLocaleString()}</strong>
@@ -145,7 +145,7 @@ function Caja() {
                 </div>
             )}
 
-            {/* ===== MODAL CONFIRMAR CARGA (se mantiene por si se usa en otro lugar) ===== */}
+            {/* ===== MODAL CONFIRMAR CARGA ===== */}
             {modalCargarMesa && (
                 <div className="modal-overlay" onClick={cancelarCargarPedido}>
                     <div className="modal-content modal-confirmar" onClick={e => e.stopPropagation()}>
@@ -168,7 +168,7 @@ function Caja() {
                 </div>
             )}
 
-            {/* MODAL DE PAGO — sin cambios */}
+            {/* ===== MODAL DE PAGO ===== */}
             {props.mostrarPago && (
                 <div className="modal-overlay">
                     <div className="modal-content">
@@ -187,7 +187,7 @@ function Caja() {
                                 </button>
                                 <button className="metodo-pago-option" onClick={() => props.procesarPago("nequi")}>
                                     <span className="icono">📱</span>
-                                    <div><strong>Nequi</strong><span>  (3118971030)</span></div>
+                                    <div><strong>Nequi</strong><span>(3118971030)</span></div>
                                 </button>
                                 <button className="btn-modal-cancelar" onClick={() => props.setMostrarPago(false)}>Cancelar</button>
                             </div>
@@ -217,45 +217,77 @@ function Caja() {
                 </div>
             )}
 
-            {/* ENTRADA DE MESA */}
+            {/* ===== MESA + BUSCADOR ===== */}
             <div className="mesa-input-container">
                 <label>🪑 Mesa:</label>
-                <input type="number" value={props.mesa} onChange={e => props.setMesa(e.target.value)}
-                    className="input-mesa" placeholder="0" />
+                <input
+                    type="number"
+                    value={props.mesa}
+                    onChange={e => props.setMesa(e.target.value)}
+                    className="input-mesa"
+                    placeholder="0"
+                />
+                <div className="buscador-wrapper">
+                    <span className="buscador-icono">🔍</span>
+                    <input
+                        type="text"
+                        className="input-buscador"
+                        placeholder="Buscar producto..."
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                    />
+                    {busqueda && (
+                        <button className="buscador-limpiar" onClick={() => setBusqueda("")}>✕</button>
+                    )}
+                </div>
             </div>
 
-            {/* CATÁLOGO — sin cambios */}
+            {/* ===== CATÁLOGO ===== */}
             <div className="productos-grid">
-                {props.productos.map(p => {
-                    const tieneVinculo = p.subTipo && p.subTipo !== 'general' && p.subTipo !== 'pulpa'; // ← re-agregar esta línea
-                    const estaRealmenteAgotado = p.cantidad <= 0;
-                    return (
-                        <div key={p.id} className={`producto-card ${estaRealmenteAgotado ? 'sin-stock' : ''}`}>
-                            <div className="producto-img-container">
-                                {p.imagen
-                                    ? <img src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`} alt={p.nombre} className="producto-img" />
-                                    : <div className="sin-img">☕</div>}
+                {productosFiltrados.length === 0 ? (
+                    <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
+                        <span className="icon">🔍</span>
+                        No se encontró "{busqueda}"
+                    </div>
+                ) : (
+                    productosFiltrados.map(p => {
+                        const tieneVinculo = p.subTipo && p.subTipo !== 'general' && p.subTipo !== 'pulpa';
+                        const estaRealmenteAgotado = p.cantidad <= 0;
+                        return (
+                            <div key={p.id} className={`producto-card ${estaRealmenteAgotado ? 'sin-stock' : ''}`}>
+                                <div className="producto-img-container">
+                                    {p.imagen
+                                        ? <img src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`} alt={p.nombre} className="producto-img" />
+                                        : <div className="sin-img">☕</div>}
+                                </div>
+                                <div className="producto-info">
+                                    <strong>{p.nombre}</strong>
+                                    <span>${p.precioVenta.toLocaleString()}</span>
+                                    <button disabled={estaRealmenteAgotado} onClick={() => props.agregarAlCarrito(p)}>
+                                        {estaRealmenteAgotado ? "Agotado" : "Agregar"}
+                                    </button>
+                                    {tieneVinculo && (
+                                        <span className="text-xs text-zinc-500 italic block mt-1">(Usa Pulpa)</span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="producto-info">
-                                <strong>{p.nombre}</strong>
-                                <span>${p.precioVenta.toLocaleString()}</span>
-                                <button disabled={estaRealmenteAgotado} onClick={() => props.agregarAlCarrito(p)}>
-                                    {estaRealmenteAgotado ? "Agotado" : "Agregar"}
-                                </button>
-                                {tieneVinculo && <span className="text-xs text-zinc-500 italic block mt-1">(Usa Pulpa)</span>}
-                            </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
 
-            {/* CARRITO — sin cambios */}
+            {/* ===== CARRITO ===== */}
             {props.carrito.length > 0 && (
                 <div className="carrito-container">
                     <div id="seccion-factura">
                         <table className="tabla-carrito">
                             <thead>
-                                <tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th className="no-print">Acción</th></tr>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cant.</th>
+                                    <th>Subtotal</th>
+                                    <th className="no-print">Acción</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 {carritoAgrupado().map(item => (
@@ -276,7 +308,9 @@ function Caja() {
                                 ))}
                             </tbody>
                         </table>
-                        <div className="total-seccion"><h2>Total: ${props.total.toLocaleString()}</h2></div>
+                        <div className="total-seccion">
+                            <h2>Total: ${props.total.toLocaleString()}</h2>
+                        </div>
                     </div>
                     <div className="botones-accion">
                         <button onClick={props.guardarPedido} className="btn btn-listo">💾 Guardar Pedido</button>

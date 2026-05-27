@@ -4,10 +4,13 @@ import CierreCaja from "./cierrecaja";
 import Reporte from "./Reporte";
 import "../styles/admin.css";
 import { useCaja } from "../hooks/cierrecaja";
+interface Props {
+  onCerrarSesion?: () => void;
+}
 
-function AdminDashboard() {
+function AdminDashboard({ onCerrarSesion }: Props) {
   const [tabActiva, setTabActiva] = useState("cierrecaja");
-  
+
   const { cajaInfo, cargando } = useCaja();
   const estadoCaja = cajaInfo?.estado === "abierto" ? "Abierto" : "Cerrado";
 
@@ -25,44 +28,44 @@ function AdminDashboard() {
     <div className="dashboard-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Juvasia Admin</h2>
+          <h2>Juyasia Admin</h2>
           <div className="status-online">
             <i className="fas fa-circle" style={{ fontSize: "8px" }} />
             <span>Sistema Online</span>
           </div>
         </div>
-        
+
         <nav className="sidebar-nav">
-          <button 
-            className={tabActiva === "cierrecaja" ? "active" : ""} 
+          <button
+            className={tabActiva === "cierrecaja" ? "active" : ""}
             onClick={() => setTabActiva("cierrecaja")}
           >
             <i className="fas fa-cash-register" />
             <span>Cierre caja</span>
           </button>
-          <button 
-            className={tabActiva === "inventario" ? "active" : ""} 
+          <button
+            className={tabActiva === "inventario" ? "active" : ""}
             onClick={() => setTabActiva("inventario")}
           >
             <i className="fas fa-shopping-cart" />
             <span>Productos</span>
           </button>
-          <button 
-            className={tabActiva === "cafeteria" ? "active" : ""} 
+          <button
+            className={tabActiva === "cafeteria" ? "active" : ""}
             onClick={() => setTabActiva("cafeteria")}
           >
             <i className="fas fa-coffee" />
             <span>Insumos</span>
           </button>
-          <button 
-            className={tabActiva === "activos" ? "active" : ""} 
+          <button
+            className={tabActiva === "activos" ? "active" : ""}
             onClick={() => setTabActiva("activos")}
           >
             <i className="fas fa-microchip" />
             <span>Equipos</span>
           </button>
-          <button 
-            className={tabActiva === "reporte" ? "active" : ""} 
+          <button
+            className={tabActiva === "reporte" ? "active" : ""}
             onClick={() => setTabActiva("reporte")}
           >
             <i className="fas fa-chart-line" />
@@ -71,7 +74,7 @@ function AdminDashboard() {
         </nav>
 
         <div className="sidebar-footer">
-          <button onClick={() => window.location.href = "/"}>
+          <button onClick={onCerrarSesion}>
             <i className="fas fa-sign-out-alt" />
             <span>Volver al Menú</span>
           </button>
@@ -94,10 +97,12 @@ function AdminDashboard() {
           {tabActiva === "cafeteria" && <Inventario tipo="insumo" />}
           {tabActiva === "activos" && <Inventario tipo="equipo" />}
           {tabActiva === "reporte" && <Reporte />}
+
         </section>
       </main>
     </div>
   );
+
 }
 
 export default AdminDashboard;

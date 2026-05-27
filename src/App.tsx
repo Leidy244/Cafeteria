@@ -1,65 +1,84 @@
 import { useState } from "react";
 import Caja from "./pages/Caja";
 import AdminDashboard from "./pages/admin";
-import { setToastHandler } from "./hooks/inventario";
+import Login from "./pages/login";
 import "./styles/toast.css";
-import { showToast, ToastContainer } from "./pages/toast";
+import { ToastContainer } from "./pages/toast";
 
-// Conectar el handler de notificaciones con el hook de inventario
-setToastHandler(showToast);
+type Vista = "cajero" | "admin" | "login";
 
 function App() {
-  const [rol, setRol] = useState("cajero");
+  const [vista, setVista] = useState<Vista>("cajero");
+
+ const handleLoginExitoso = (rol: string) => {
+  if (rol === "admin") {
+    setVista("admin");
+  } else {
+    setVista("cajero");
+  }
+};
+
+  const handleCerrarAdmin = () => {
+    setVista("cajero");
+  };
 
   return (
     <div>
-      {/* Contenedor de notificaciones - se muestra en toda la app */}
       <ToastContainer />
-      
-      {/* Botones de cambio de rol - puedes darles estilo después */}
-      <div style={{ 
-        position: 'fixed', 
-        bottom: '20px', 
-        right: '20px', 
-        zIndex: 100,
-        display: 'flex',
-        gap: '10px'
-      }}>
-        <button 
-          onClick={() => setRol("admin")}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '20px',
-            border: '1px solid #e889a9',
-            background: rol === 'admin' ? '#e889a9' : 'white',
-            color: rol === 'admin' ? 'white' : '#e889a9',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          Admin
-        </button>
-        <button 
-          onClick={() => setRol("cajero")}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '20px',
-            border: '1px solid #e889a9',
-            background: rol === 'cajero' ? '#e889a9' : 'white',
-            color: rol === 'cajero' ? 'white' : '#e889a9',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          Cajero
-        </button>
-      </div>
 
-      {rol === "admin" ? (
-        <AdminDashboard />
-      ) : (
-        <Caja />
+      {/* Botones solo visibles en caja */}
+      {vista === "cajero" && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 100,
+          display: 'flex',
+          gap: '10px'
+        }}>
+          <button
+            onClick={() => setVista("login")}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: '1px solid #e889a9',
+              background: 'white',
+              color: '#e889a9',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Admin
+          </button>
+          <button
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: '1px solid #e889a9',
+              background: '#e889a9',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+            disabled
+          >
+            Cajero
+          </button>
+        </div>
       )}
+
+      {vista === "login"  && (
+        <Login
+          onLoginExitoso={handleLoginExitoso}
+          onVolver={() => setVista("cajero")}
+        />
+      )}
+
+      {vista === "admin"  && (
+        <AdminDashboard onCerrarSesion={handleCerrarAdmin} />
+      )}
+
+      {vista === "cajero" && <Caja />}
     </div>
   );
 }

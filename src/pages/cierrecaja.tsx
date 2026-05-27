@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useCaja } from '../hooks/cierrecaja';
+import { showToast } from '../pages/toast';
 import '../styles/admin.css';
 
 const CierreCaja: React.FC = () => {
   const { cajaInfo, resumen, cargando, abrirCaja, cerrarCaja, refrescar } = useCaja();
   const [inputBase, setInputBase] = useState<string>("");
   const [inputNequi, setInputNequi] = useState<string>("");
+  const [confirmandoCierre, setConfirmandoCierre] = useState(false);
 
   if (cargando) {
     return (
@@ -21,7 +23,7 @@ const CierreCaja: React.FC = () => {
     const montoNequiValue = Number(inputNequi);
 
     if (inputBase === "" || inputNequi === "" || montoEfectivo < 0 || montoNequiValue < 0) {
-      alert("⚠️ Por favor, ingresa los montos iniciales de Efectivo y Nequi.");
+      showToast("⚠️ Por favor, ingresa los montos iniciales de Efectivo y Nequi.", "warning");
       return;
     }
 
@@ -30,7 +32,7 @@ const CierreCaja: React.FC = () => {
       setInputBase("");
       setInputNequi("");
     } else {
-      alert("❌ Error al abrir el turno.");
+      showToast("❌ Error al abrir el turno.", "error");
     }
   };
 
@@ -91,12 +93,22 @@ const CierreCaja: React.FC = () => {
   const baseNequi = Number(cajaInfo.montoNequi || 0);
 
   const ejecutarCierre = async () => {
-    if (window.confirm(`¿Cerrar turno con $${resumen.totalAcumulado?.toLocaleString()} en efectivo físico?`)) {
-      const resultado = await cerrarCaja(cajaInfo.id);
-      if (resultado?.success) {
-        alert("✅ Turno cerrado exitosamente.");
-        await refrescar();
-      }
+    // Primera vez: pedir confirmación con toast personalizado
+    if (!confirmandoCierre) {
+      setConfirmandoCierre(true);
+      showToast(`¿Cerrar turno? Confirma pulsando el botón nuevamente.`, "warning");
+      setTimeout(() => setConfirmandoCierre(false), 5000);
+      return;
+    }
+
+    // Segunda vez: ejecutar cierre
+    setConfirmandoCierre(false);
+    const resultado = await cerrarCaja(cajaInfo.id);
+    if (resultado?.success) {
+      showToast("✅ Turno cerrado exitosamente.", "success");
+      await refrescar();
+    } else {
+      showToast("❌ Error al cerrar el turno.", "error");
     }
   };
 
@@ -107,9 +119,6 @@ const CierreCaja: React.FC = () => {
           <h1><i className="fas fa-cash-register"></i> Control de Turno</h1>
           <p>ID #{cajaInfo.id} | Abierto: {new Date(cajaInfo.fechaApertura).toLocaleTimeString()}</p>
         </div>
-        <button onClick={refrescar} className="btn-refresh">
-          <i className="fas fa-sync-alt"></i>
-        </button>
       </div>
 
       <div className="resumen-grid-3">
@@ -164,8 +173,12 @@ const CierreCaja: React.FC = () => {
         </div>
       </div>
 
-      <button onClick={ejecutarCierre} className="btn-cerrar-turno">
-        <i className="fas fa-lock"></i> Finalizar Jornada y Cerrar Turno
+      <button
+        onClick={ejecutarCierre}
+        className={`btn-cerrar-turno ${confirmandoCierre ? 'btn-cerrar-turno--confirmar' : ''}`}
+      >
+        <i className="fas fa-lock"></i>
+        {confirmandoCierre ? '⚠️ Pulsa de nuevo para confirmar cierre' : 'Finalizar Jornada y Cerrar Turno'}
       </button>
     </div>
   );

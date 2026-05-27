@@ -1022,11 +1022,10 @@
   /* ===== ENCABEZADO DE LA FACTURA (desde CSS) ===== */
   #seccion-factura::before {
     content: 
-      "JUVASIA POSTRES Y CAFÉ\A" 
-      "NIT: 901.234.567-8\A"
+      "JUVASIA\A" 
+      "NIT: 4221523\A"
       "Régimen Simplificado\A"
       "Jenesano - Boyacá\A"
-      "Tel: 311 897 1030\A"
       "--------------------------\A";
     display: block;
     text-align: center;
@@ -1148,8 +1147,6 @@
       "¡GRACIAS POR SU COMPRA!\A"
       "--------------------------\A"
       "Esta factura es un comprobante de pago\A"
-      "Ley 1231 de 2008 - Factura electrónica\A"
-      "Resolución DIAN No. 1234567890\A"
       "--------------------------\A"
       "Sistema POS Juvasia v1.0";
     display: block;
@@ -1163,7 +1160,7 @@
   }
 }
 
-/* Estilos normales (no impresión) */
+/* Estilos normales  */
 #seccion-factura {
   background: white;
   border-radius: 16px;
@@ -2400,4 +2397,67 @@
 .modal-acciones {
   max-height: 90vh;
   overflow-y: auto;
+}
+/* ===== BUSCADOR ===== */
+.buscador-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.buscador-icono {
+  position: absolute;
+  left: 14px;
+  font-size: 0.9rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-buscador {
+  width: 100%;
+  padding: 12px 40px 12px 38px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-medium, #e3d9cf);
+  background: var(--bg-input, #ffffff);
+  font-size: 0.9rem;
+  color: var(--text-primary, #2c2822);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  box-sizing: border-box;
+}
+
+.input-buscador:focus {
+  border-color: var(--pink-primary, #e889a9);
+  box-shadow: 0 0 0 3px var(--pink-glow, rgba(232, 137, 169, 0.12));
+}
+
+.input-buscador::placeholder {
+  color: var(--text-muted, #a39686);
+}
+
+.buscador-limpiar {
+  position: absolute;
+  right: 12px;
+  background: var(--bg-soft, #fff5eb);
+  border: 1px solid var(--border-light, #f0eae2);
+  color: var(--text-muted, #a39686);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.buscador-limpiar:hover {
+  background: var(--danger, #e4a6a6);
+  border-color: var(--danger, #e4a6a6);
+  color: white;
 }

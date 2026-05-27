@@ -1,21 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-
-// Función global para mostrar notificaciones (la vamos a crear)
-let showToastGlobal: ((message: string, type: 'success' | 'error' | 'warning' | 'info') => void) | null = null;
-
-export const setToastHandler = (handler: typeof showToastGlobal) => {
-  showToastGlobal = handler;
-};
-
-const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
-  if (showToastGlobal) {
-    showToastGlobal(message, type);
-  } else {
-    // Fallback por si no está el handler
-    alert(message);
-  }
-};
+import { showToast } from "../pages/toast";
 
 export function useInventario() {
   const [lista, setLista] = useState<any[]>([]);
@@ -41,19 +26,17 @@ export function useInventario() {
       setLista(res.data);
     } catch (error) {
       console.error("Error al obtener productos:", error);
-      showNotification("Error al cargar los productos", "error");
+      showToast("Error al cargar los productos", "error");
     }
   };
 
   const guardarProducto = async (tipo: string) => {
-    // Validaciones básicas
     if (!nombre.trim()) {
-      showNotification("Por favor ingresa el nombre del producto", "warning");
+      showToast("Por favor ingresa el nombre del producto", "warning");
       return;
     }
-    
     if (!precioIngreso || Number(precioIngreso) <= 0) {
-      showNotification("Por favor ingresa un costo unitario válido", "warning");
+      showToast("Por favor ingresa un costo unitario válido", "warning");
       return;
     }
 
@@ -72,10 +55,10 @@ export function useInventario() {
       let response;
       if (editandoId) {
         response = await axios.put(`${API_URL}/${editandoId}`, formData);
-        showNotification("✅ Actualizado correctamente", "success");
+        showToast("✅ Actualizado correctamente", "success");
       } else {
         response = await axios.post(API_URL, formData);
-        showNotification("✅ Guardado correctamente", "success");
+        showToast("✅ Guardado correctamente", "success");
       }
 
       limpiarFormulario();
@@ -84,7 +67,7 @@ export function useInventario() {
     } catch (error: any) {
       console.error("Error al guardar:", error);
       const errorMsg = error.response?.data?.error || "Error al guardar. Intenta nuevamente.";
-      showNotification(errorMsg, "error");
+      showToast(errorMsg, "error");
       return { success: false, error: errorMsg };
     }
   };
@@ -98,21 +81,18 @@ export function useInventario() {
     setDescripcion(item.descripcion || "");
     setSubTipoInsumo(item.subTipo || "general");
     setMetodoPago(item.metodoPago || "efectivo");
-    showNotification("Cargando datos para editar", "info");
+    showToast("Cargando datos para editar", "info");
   };
 
+  // ← SIN window.confirm, la confirmación la maneja el componente
   const eliminarProducto = async (id: number) => {
-    // Usamos confirm nativo (ese no se puede estilizar fácilmente)
-    // Pero podemos crear un modal personalizado después
-    if (!window.confirm("¿Estás seguro de eliminar este item?")) return;
-    
     try {
       await axios.delete(`${API_URL}/${id}`);
-      showNotification("🗑️ Eliminado correctamente", "success");
+      showToast("🗑️ Eliminado correctamente", "success");
       obtenerProductos();
     } catch (error) {
       console.error("Error al eliminar:", error);
-      showNotification("Error al eliminar el item", "error");
+      showToast("Error al eliminar el item", "error");
     }
   };
 
@@ -132,26 +112,14 @@ export function useInventario() {
 
   return {
     states: {
-      lista,
-      nombre,
-      precioIngreso,
-      precioVenta,
-      cantidad,
-      descripcion,
-      metodoPago,
-      subTipoInsumo,
-      imagen,
-      editandoId,
+      lista, nombre, precioIngreso, precioVenta,
+      cantidad, descripcion, metodoPago,
+      subTipoInsumo, imagen, editandoId,
     },
     setters: {
-      setNombre,
-      setPrecioIngreso,
-      setPrecioVenta,
-      setCantidad,
-      setDescripcion,
-      setMetodoPago,
-      setSubTipoInsumo,
-      setImagen,
+      setNombre, setPrecioIngreso, setPrecioVenta,
+      setCantidad, setDescripcion, setMetodoPago,
+      setSubTipoInsumo, setImagen,
     },
     actions: {
       guardarProducto,
