@@ -1,11 +1,6 @@
 import { useState } from "react";
 import "../styles/login.css";
 
-// Credenciales — cámbialas o conéctalas a tu API
-const USUARIOS = [
-    { correo: "admin@juyasia.com", contrasena: "admin123" },
-];
-
 interface Props {
     onLoginExitoso: (rol: string) => void;
     onVolver: () => void;

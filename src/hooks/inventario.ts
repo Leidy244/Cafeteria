@@ -8,7 +8,8 @@ export function useInventario() {
   const [precioIngreso, setPrecioIngreso] = useState("");
   const [precioVenta, setPrecioVenta] = useState("");
   const [cantidad, setCantidad] = useState("");
-  const [descripcion, setDescripcion] = useState("");
+  const [descripcion, setDescripcion] = useState(""); // ← AGREGADO: falta esta
+  const [fecha, setFecha] = useState(""); // ← AGREGADO: para insumos/equipos
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [subTipoInsumo, setSubTipoInsumo] = useState("general");
   const [imagen, setImagen] = useState<File | null>(null);
@@ -40,13 +41,28 @@ export function useInventario() {
       return;
     }
 
+    // Validar fecha para insumos y equipos
+    if ((tipo === "insumo" || tipo === "equipo") && !fecha) {
+      showToast("Por favor ingresa la fecha de registro", "warning");
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("nombre", nombre);
       formData.append("precioIngreso", precioIngreso);
       formData.append("precioVenta", precioVenta || "0");
-      formData.append("cantidad", cantidad);
-      formData.append("descripcion", descripcion);
+      formData.append("cantidad", cantidad || "0");
+      
+      // Guardar según el tipo
+      if (tipo === "venta") {
+        formData.append("descripcion", descripcion || "");
+      } else {
+        // Para insumos y equipos, guardar la fecha en descripcion (por compatibilidad)
+        formData.append("descripcion", fecha);
+        formData.append("fecha", fecha); // Campo adicional si existe en la BD
+      }
+      
       formData.append("tipo", tipo);
       formData.append("subTipo", subTipoInsumo);
       formData.append("metodoPago", metodoPago);
@@ -79,12 +95,14 @@ export function useInventario() {
     setPrecioVenta(item.precioVenta?.toString() || "");
     setCantidad(item.cantidad?.toString() || "");
     setDescripcion(item.descripcion || "");
+    // Cargar fecha: si existe el campo fecha usarlo, si no usar descripcion (para datos viejos)
+    const fechaValue = item.fecha || (item.tipo !== "venta" ? item.descripcion : "");
+    setFecha(fechaValue || "");
     setSubTipoInsumo(item.subTipo || "general");
     setMetodoPago(item.metodoPago || "efectivo");
     showToast("Cargando datos para editar", "info");
   };
 
-  // ← SIN window.confirm, la confirmación la maneja el componente
   const eliminarProducto = async (id: number) => {
     try {
       await axios.delete(`${API_URL}/${id}`);
@@ -103,6 +121,7 @@ export function useInventario() {
     setPrecioVenta("");
     setCantidad("");
     setDescripcion("");
+    setFecha(""); // ← Limpiar fecha
     setSubTipoInsumo("general");
     setMetodoPago("efectivo");
     setImagen(null);
@@ -112,14 +131,28 @@ export function useInventario() {
 
   return {
     states: {
-      lista, nombre, precioIngreso, precioVenta,
-      cantidad, descripcion, metodoPago,
-      subTipoInsumo, imagen, editandoId,
+      lista, 
+      nombre, 
+      precioIngreso, 
+      precioVenta,
+      cantidad, 
+      descripcion,  // ← AGREGADO
+      fecha,        // ← AGREGADO
+      metodoPago,
+      subTipoInsumo, 
+      imagen, 
+      editandoId,
     },
     setters: {
-      setNombre, setPrecioIngreso, setPrecioVenta,
-      setCantidad, setDescripcion, setMetodoPago,
-      setSubTipoInsumo, setImagen,
+      setNombre, 
+      setPrecioIngreso, 
+      setPrecioVenta,
+      setCantidad, 
+      setDescripcion,  // ← AGREGADO
+      setFecha,        // ← AGREGADO
+      setMetodoPago,
+      setSubTipoInsumo, 
+      setImagen,
     },
     actions: {
       guardarProducto,

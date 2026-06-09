@@ -267,7 +267,7 @@ function Caja() {
                                         {estaRealmenteAgotado ? "Agotado" : "Agregar"}
                                     </button>
                                     {tieneVinculo && (
-                                        <span className="text-xs text-zinc-500 italic block mt-1">(Usa Pulpa)</span>
+                                        <span className="text-xs text-zinc-500 italic block mt-1"></span>
                                     )}
                                 </div>
                             </div>

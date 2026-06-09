@@ -1,5 +1,5 @@
 /* =============================================================
-   JUVASIA — MÓDULO DE VENTAS / CARRITO
+   JUYASIA — MÓDULO DE VENTAS / CARRITO
    Con botones mejorados y estilos de alerta
    ============================================================= */
 
@@ -1022,7 +1022,7 @@
   /* ===== ENCABEZADO DE LA FACTURA (desde CSS) ===== */
   #seccion-factura::before {
     content: 
-      "JUVASIA\A" 
+      "JUYASIA\A" 
       "NIT: 4221523\A"
       "Régimen Simplificado\A"
       "Jenesano - Boyacá\A"
@@ -1148,7 +1148,7 @@
       "--------------------------\A"
       "Esta factura es un comprobante de pago\A"
       "--------------------------\A"
-      "Sistema POS Juvasia v1.0";
+      "Sistema POS Juyasia v1.0";
     display: block;
     text-align: center;
     white-space: pre-wrap;
@@ -1182,7 +1182,7 @@
   color: var(--text-muted);
 }
 /* =============================================================
-   JUVASIA — MÓDULO DE VENTAS / CARRITO
+   JUYASIA — MÓDULO DE VENTAS / CARRITO
    ============================================================= */
 
 :root {

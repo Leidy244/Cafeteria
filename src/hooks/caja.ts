@@ -133,72 +133,97 @@ export const useVentas = () => {
     const vuelto = montoRecibido ? Number(montoRecibido) - total : 0;
 
     // --- GESTIÓN DE PEDIDOS ---
-    const guardarPedido = async () => {
-        if (!mesa) {
-            showToast("Asigna una mesa antes de guardar.", "warning");
-            return;
+  const guardarPedido = async () => {
+    if (!mesa) {
+        showToast("Asigna una mesa antes de guardar.", "warning");
+        return;
+    }
+    if (carrito.length === 0) {
+        showToast("El carrito está vacío.", "warning");
+        return;
+    }
+
+    // Agrupar el carrito actual
+    const carritoActualAgrupado = carrito.reduce((acc: any[], item: any) => {
+        const existente = acc.find((p) => p.id === item.id);
+        if (existente) {
+            existente.cantidad += 1;
+        } else {
+            acc.push({ ...item, cantidad: 1 });
         }
-        if (carrito.length === 0) {
-            showToast("El carrito está vacío.", "warning");
-            return;
-        }
+        return acc;
+    }, []);
 
-        const carritoAgrupado = carrito.reduce((acc: any[], item: any) => {
-            const existente = acc.find((p) => p.id === item.id);
-            if (existente) {
-                existente.cantidad += 1;
-            } else {
-                acc.push({ ...item, cantidad: 1 });
-            }
-            return acc;
-        }, []);
+    const pedidoExistente = pedidosPendientes.find(p => String(p.mesa) === String(mesa));
 
-        const pedidoExistente = pedidosPendientes.find(p => String(p.mesa) === String(mesa));
-
-        try {
-            if (pedidoExistente) {
-                const res = await fetch(`${API_PEDIDOS}/${pedidoExistente.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        ...pedidoExistente,
-                        carrito: carritoAgrupado,
-                        total: total,
-                        estado: "pendiente"
-                    })
-                });
-                if (res.ok) {
-                    showToast(`Mesa ${mesa} actualizada a $${total.toLocaleString()}`, "success");
+    try {
+        if (pedidoExistente) {
+            // 🔥 CRUCIAL: Combinar el carrito existente con el nuevo
+            const carritoAnterior = pedidoExistente.carrito || [];
+            const carritoCombinado = [...carritoAnterior];
+            
+            // Agregar los nuevos items al carrito combinado
+            carritoActualAgrupado.forEach(nuevoItem => {
+                const existente = carritoCombinado.find(item => item.id === nuevoItem.id);
+                if (existente) {
+                    // Si ya existe, sumar la cantidad
+                    existente.cantidad += nuevoItem.cantidad;
                 } else {
-                    showToast("Error al actualizar el pedido", "error");
+                    // Si es nuevo, agregarlo
+                    carritoCombinado.push({ ...nuevoItem });
                 }
+            });
+            
+            // Calcular el nuevo total
+            const nuevoTotal = carritoCombinado.reduce((sum, item) => {
+                const producto = productos.find(p => p.id === item.id);
+                return sum + (producto?.precioVenta || 0) * item.cantidad;
+            }, 0);
+            
+            const res = await fetch(`${API_PEDIDOS}/${pedidoExistente.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...pedidoExistente,
+                    carrito: carritoCombinado,
+                    total: nuevoTotal,
+                    estado: "pendiente"
+                })
+            });
+            
+            if (res.ok) {
+                showToast(`Mesa ${mesa} actualizada a $${nuevoTotal.toLocaleString()}`, "success");
             } else {
-                const res = await fetch(API_PEDIDOS, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        mesa,
-                        total,
-                        carrito: carritoAgrupado,
-                        estado: "pendiente"
-                    })
-                });
-                if (res.ok) {
-                    showToast(`Pedido guardado para mesa ${mesa} ✅`, "success");
-                } else {
-                    showToast("Error al guardar el pedido", "error");
-                }
+                showToast("Error al actualizar el pedido", "error");
             }
-
-            setCarrito([]);
-            setMesa("");
-            await cargarPedidosDesdeDB();
-            await cargarProductos();
-        } catch (error) {
-            console.error("Error en guardarPedido:", error);
-            showToast("Error de conexión al guardar el pedido", "error");
+        } else {
+            // Crear nuevo pedido
+            const res = await fetch(API_PEDIDOS, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    mesa,
+                    total: total,
+                    carrito: carritoActualAgrupado,
+                    estado: "pendiente"
+                })
+            });
+            if (res.ok) {
+                showToast(`Pedido guardado para mesa ${mesa} ✅`, "success");
+            } else {
+                showToast("Error al guardar el pedido", "error");
+            }
         }
-    };
+
+        setCarrito([]);
+        setMesa("");
+        await cargarPedidosDesdeDB();
+        await cargarProductos();
+    } catch (error) {
+        console.error("Error en guardarPedido:", error);
+        showToast("Error de conexión al guardar el pedido", "error");
+    }
+};
 
     const cargarPedido = (pedido: any) => {
         const carritoReconstruido: any[] = [];
