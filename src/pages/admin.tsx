@@ -1,28 +1,33 @@
-import { useState } from "react";
-import Inventario from "./Inventario";
-import CierreCaja from "./cierrecaja";
-import Reporte from "./Reporte";
-import "../styles/admin.css";
-import { useCaja } from "../hooks/cierrecaja";
-interface Props {
-  onCerrarSesion?: () => void;
-}
+import { useState, startTransition } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts';
+import Inventario from './Inventario';
+import CierreCaja from './cierrecaja';
+import Reporte from './Reporte';
+import { useCaja } from '../hooks/cierrecaja';
+import '../styles/admin.css';
 
-function AdminDashboard({ onCerrarSesion }: Props) {
-  const [tabActiva, setTabActiva] = useState("cierrecaja");
+const titulos: Record<string, string> = {
+  cierrecaja: 'Control de Turno',
+  inventario: 'Gestión de Productos',
+  cafeteria: 'Gestión de Insumos',
+  activos: 'Gestión de Equipos',
+  reporte: 'Reporte de Ventas',
+};
 
+export default function AdminDashboard() {
+  const [tabActiva, setTabActiva] = useState('cierrecaja');
   const { cajaInfo, cargando } = useCaja();
-  const estadoCaja = cajaInfo?.estado === "abierto" ? "Abierto" : "Cerrado";
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const estadoCaja = cajaInfo?.estado === 'abierto' ? 'Abierto' : 'Cerrado';
+
+  const handleCerrarSesion = () => {
+    navigate('/caja', { replace: true });
+    startTransition(() => logout());
+  };
 
   if (cargando) return <div className="loader">Cargando sistema...</div>;
-
-  const titulos: Record<string, string> = {
-    cierrecaja: "Control de Turno",
-    inventario: "Gestión de Productos",
-    cafeteria: "Gestión de Insumos",
-    activos: "Gestión de Equipos",
-    reporte: "Reporte de Ventas"
-  };
 
   return (
     <div className="dashboard-layout">
@@ -30,53 +35,28 @@ function AdminDashboard({ onCerrarSesion }: Props) {
         <div className="sidebar-header">
           <h2>Juyasia Admin</h2>
           <div className="status-online">
-            <i className="fas fa-circle" style={{ fontSize: "8px" }} />
+            <i className="fas fa-circle" style={{ fontSize: '8px' }} />
             <span>Sistema Online</span>
           </div>
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            className={tabActiva === "cierrecaja" ? "active" : ""}
-            onClick={() => setTabActiva("cierrecaja")}
-          >
-            <i className="fas fa-cash-register" />
-            <span>Cierre caja</span>
-          </button>
-          <button
-            className={tabActiva === "inventario" ? "active" : ""}
-            onClick={() => setTabActiva("inventario")}
-          >
-            <i className="fas fa-shopping-cart" />
-            <span>Productos</span>
-          </button>
-          <button
-            className={tabActiva === "cafeteria" ? "active" : ""}
-            onClick={() => setTabActiva("cafeteria")}
-          >
-            <i className="fas fa-coffee" />
-            <span>Insumos</span>
-          </button>
-          <button
-            className={tabActiva === "activos" ? "active" : ""}
-            onClick={() => setTabActiva("activos")}
-          >
-            <i className="fas fa-microchip" />
-            <span>Equipos</span>
-          </button>
-          <button
-            className={tabActiva === "reporte" ? "active" : ""}
-            onClick={() => setTabActiva("reporte")}
-          >
-            <i className="fas fa-chart-line" />
-            <span>Reporte de Ventas</span>
-          </button>
+          {([
+            ['cierrecaja', 'fa-cash-register', 'Cierre caja'],
+            ['inventario', 'fa-shopping-cart', 'Productos'],
+            ['cafeteria', 'fa-coffee', 'Insumos'],
+            ['activos', 'fa-microchip', 'Equipos'],
+            ['reporte', 'fa-chart-line', 'Reporte de Ventas'],
+          ] as const).map(([key, icon, label]) => (
+            <button key={key} className={tabActiva === key ? 'active' : ''} onClick={() => setTabActiva(key)}>
+              <i className={`fas ${icon}`} /><span>{label}</span>
+            </button>
+          ))}
         </nav>
 
         <div className="sidebar-footer">
-          <button onClick={onCerrarSesion}>
-            <i className="fas fa-sign-out-alt" />
-            <span>Volver al Menú</span>
+          <button onClick={handleCerrarSesion}>
+            <i className="fas fa-sign-out-alt" /><span>Volver al Menú</span>
           </button>
         </div>
       </aside>
@@ -85,24 +65,19 @@ function AdminDashboard({ onCerrarSesion }: Props) {
         <div className="content-header">
           <h1>{titulos[tabActiva]}</h1>
           <p className="status-line">
-            Estado de caja: <strong className={estadoCaja === "Abierto" ? "val-green" : "val-red"}>
-              {estadoCaja}
-            </strong>
+            Estado de caja:{' '}
+            <strong className={estadoCaja === 'Abierto' ? 'val-green' : 'val-red'}>{estadoCaja}</strong>
           </p>
         </div>
 
         <section className="inventario-container">
-          {tabActiva === "cierrecaja" && <CierreCaja />}
-          {tabActiva === "inventario" && <Inventario tipo="venta" />}
-          {tabActiva === "cafeteria" && <Inventario tipo="insumo" />}
-          {tabActiva === "activos" && <Inventario tipo="equipo" />}
-          {tabActiva === "reporte" && <Reporte />}
-
+          {tabActiva === 'cierrecaja' && <CierreCaja />}
+          {tabActiva === 'inventario' && <Inventario tipo="venta" />}
+          {tabActiva === 'cafeteria' && <Inventario tipo="insumo" />}
+          {tabActiva === 'activos' && <Inventario tipo="equipo" />}
+          {tabActiva === 'reporte' && <Reporte />}
         </section>
       </main>
     </div>
   );
-
 }
-
-export default AdminDashboard;

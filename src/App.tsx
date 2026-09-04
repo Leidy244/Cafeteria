@@ -1,86 +1,44 @@
-import { useState } from "react";
-import Caja from "./pages/Caja";
-import AdminDashboard from "./pages/admin";
-import Login from "./pages/login";
-import "./styles/toast.css";
-import { ToastContainer } from "./pages/toast";
+import { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts';
 
-type Vista = "cajero" | "admin" | "login";
+const LoginPage = lazy(() => import('./pages/login'));
+const CajaPage = lazy(() => import('./pages/Caja'));
+const AdminPage = lazy(() => import('./pages/admin'));
 
-function App() {
-  const [vista, setVista] = useState<Vista>("cajero");
-
- const handleLoginExitoso = (rol: string) => {
-  if (rol === "admin") {
-    setVista("admin");
-  } else {
-    setVista("cajero");
-  }
-};
-
-  const handleCerrarAdmin = () => {
-    setVista("cajero");
-  };
-
+function LoadingFallback() {
   return (
-    <div>
-      <ToastContainer />
-
-      {/* Botones solo visibles en caja */}
-      {vista === "cajero" && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 100,
-          display: 'flex',
-          gap: '10px'
-        }}>
-          <button
-            onClick={() => setVista("login")}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: '1px solid #e889a9',
-              background: 'white',
-              color: '#e889a9',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            Admin
-          </button>
-          <button
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: '1px solid #e889a9',
-              background: '#e889a9',
-              color: 'white',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
-            disabled
-          >
-            Cajero
-          </button>
-        </div>
-      )}
-
-      {vista === "login"  && (
-        <Login
-          onLoginExitoso={handleLoginExitoso}
-          onVolver={() => setVista("cajero")}
-        />
-      )}
-
-      {vista === "admin"  && (
-        <AdminDashboard onCerrarSesion={handleCerrarAdmin} />
-      )}
-
-      {vista === "cajero" && <Caja />}
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', fontSize: '1.1rem', color: '#6b6256',
+    }}>
+      Cargando...
     </div>
   );
 }
 
-export default App;
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isLoggedIn } = useAuth();
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/caja" element={<CajaPage />} />
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/caja" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
