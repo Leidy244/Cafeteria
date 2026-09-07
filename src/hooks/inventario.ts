@@ -7,6 +7,22 @@ import { useToast } from '../contexts';
 const normalizarTexto = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
+const getCampo = (campos: Record<string, unknown>, patrones: string[]) => {
+  for (const p of patrones) {
+    const v = campos[p];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  for (const [clave, valor] of Object.entries(campos)) {
+    if (valor === undefined || valor === null || String(valor).trim() === '') continue;
+    const norm = normalizarTexto(clave);
+    if (norm.includes('alerta') || norm.includes('bajo') || norm.includes('origen') || norm.includes('ganancia')) continue;
+    for (const p of patrones) {
+      if (norm.includes(p)) return valor;
+    }
+  }
+  return null;
+};
+
 export function useInventario() {
   const { showToast } = useToast();
   const [lista, setLista] = useState<Producto[]>([]);
@@ -144,20 +160,27 @@ export function useInventario() {
           const campos: Record<string, unknown> = {};
           for (const [clave, valor] of Object.entries(fila)) campos[normalizarTexto(clave)] = valor;
 
-          const getStr = (claves: string[]) => {
-            for (const c of claves) {
-              const v = campos[c];
-              if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
-            }
-            return '';
+          const getStr = (patrones: string[]) => {
+            const valor = getCampo(campos, patrones);
+            return valor === null ? '' : String(valor).trim();
           };
-          const getNum = (claves: string[]) => {
-            const s = getStr(claves).replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '.').replace(/\s+/g, '');
-            const n = Number(s);
+          const getNum = (patrones: string[]) => {
+            const v = getCampo(campos, patrones);
+            if (v === null) return 0;
+            if (typeof v === 'number') return isNaN(v) ? 0 : v;
+            const s = String(v).replace(/\$/g, '').replace(/\s+/g, '');
+            const directo = Number(s);
+            if (!isNaN(directo)) return directo;
+            if (s.includes(',')) {
+              const n = Number(s.replace(/\./g, '').replace(/,/g, '.'));
+              return isNaN(n) ? 0 : n;
+            }
+            const n = Number(s.replace(/\./g, ''));
             return isNaN(n) ? 0 : n;
           };
           const getFecha = () => {
-            const v = campos['fecha'];
+            const v = getCampo(campos, ['fecha', 'fecha de registro', 'registro']);
+            if (v === null || String(v).trim() === '') return fechaHoy;
             if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
             if (typeof v === 'number' && v > 1000) {
               const ssSSF = XLSX.SSF as unknown as { parse_date_code?: (n: number) => { y: number; m: number; d: number } | undefined };
@@ -171,21 +194,21 @@ export function useInventario() {
             return fechaHoy;
           };
 
-          const nombre = getStr(['nombre', 'producto', 'item']);
+          const nombre = getStr(['nombre', 'nombre del elemento', 'producto', 'item', 'elemento']);
           if (!nombre) continue;
           const yaExiste = lista.some((p) => p.nombre.trim().toLowerCase() === nombre.toLowerCase());
           if (yaExiste) { omitidos += 1; continue; }
 
-          const precioIngreso = getNum(['costo unit', 'precio ingreso', 'costo', 'precio de ingreso']);
-          const cantidad = getNum(['stock', 'cantidad', 'cant', 'existencia', 'cant instalados']);
-          const precioVenta = getNum(['precio venta', 'precio']);
+          const precioIngreso = getNum(['costo unitario', 'costo unit', 'precio de ingreso', 'precio ingreso', 'costo', 'ingreso']);
+          const cantidad = getNum(['cantidad stock', 'cantidad', 'existencia', 'cant instalados', 'stock', 'cant']);
+          const precioVenta = getNum(['precio venta', 'precio de venta', 'precio publico', 'precio']);
           const metodoPago: MetodoPago = getStr(['metodo de pago', 'metodo', 'metodopago']).toLowerCase().includes('nequi') ? 'nequi' : 'efectivo';
           const fecha = getFecha();
 
           let subTipo = 'general';
           if (tipo === 'venta') {
-            const vinculo = getStr(['vinculo pulpa', 'vinculo', 'vinculopulpa', 'subtipo']);
-            if (vinculo && vinculo.toLowerCase() !== 'ninguno') subTipo = vinculo;
+            const vinculo = getStr(['vinculo pulpa', 'vinculopulpa', 'vinculo', 'subtipo']);
+            if (vinculo && vinculo.toLowerCase() !== 'ninguno' && vinculo.toLowerCase() !== 'nap') subTipo = vinculo;
           } else if (tipo === 'insumo') {
             const tipoInsumo = getStr(['tipo de insumo', 'tipo insumo', 'tipo']);
             if (tipoInsumo.toLowerCase().includes('pulpa')) subTipo = 'pulpa';
