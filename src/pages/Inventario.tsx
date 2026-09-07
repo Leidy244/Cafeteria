@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useInventario } from '../hooks/inventario';
 import * as XLSX from 'xlsx';
 import type { TipoProducto } from '../types';
@@ -23,6 +23,7 @@ export function Inventario({ tipo = 'venta' }: InventarioProps) {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina, setItemsPorPagina] = useState(5);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (states.lista) {
@@ -78,6 +79,13 @@ export function Inventario({ tipo = 'venta' }: InventarioProps) {
   };
 
   const handleCancelar = () => { setModalAbierto(false); actions.limpiarFormulario(); };
+
+  const handleImportarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    await actions.importarDesdeExcel(archivo, tipo);
+    e.target.value = '';
+  };
 
   const handleEliminar = (id: number) => {
     if (eliminandoId === id) { actions.eliminarProducto(id); setEliminandoId(null); }
@@ -137,6 +145,10 @@ export function Inventario({ tipo = 'venta' }: InventarioProps) {
             <input type="text" placeholder="Buscar por nombre..." value={terminoBusqueda} onChange={(e) => setTerminoBusqueda(e.target.value)} className="search-input" />
             {terminoBusqueda && <button className="search-clear" onClick={() => setTerminoBusqueda('')}><i className="fas fa-times"></i></button>}
           </div>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportarExcel} />
+          <button className="btn-excel" onClick={() => fileInputRef.current?.click()} style={{ marginRight: '8px' }} title={`Importar ${titulos[tipo]} desde Excel`}>
+            <i className="fas fa-file-import"></i> Importar Excel
+          </button>
           <button className="btn-excel" onClick={exportarExcel} style={{ marginRight: '8px' }}><i className="fas fa-file-excel"></i> Exportar Excel</button>
           <button className="btn-agregar" onClick={() => { actions.limpiarFormulario(); setModalAbierto(true); }}>
             <i className="fas fa-plus"></i> Agregar {titulos[tipo]}

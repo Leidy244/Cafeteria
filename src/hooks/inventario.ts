@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import type { Producto, TipoProducto, MetodoPago } from '../types';
 import { productService } from '../services';
 import { useToast } from '../contexts';
+
+const normalizarTexto = (s: string): string =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export function useInventario() {
   const { showToast } = useToast();
@@ -107,9 +111,123 @@ export function useInventario() {
     setImagen(null);
   }, []);
 
+  const importarDesdeExcel = useCallback(
+    async (archivo: File, tipo: TipoProducto) => {
+      const patronHoja: Record<TipoProducto, string> = { venta: 'producto', insumo: 'insumo', equipo: 'equipo' };
+      try {
+        const buffer = await archivo.arrayBuffer();
+        const workbook = XLSX.read(buffer);
+
+        let indiceHoja = 0;
+        if (workbook.SheetNames.length > 1) {
+          const encontrada = workbook.SheetNames.findIndex((n) => normalizarTexto(n).includes(patronHoja[tipo]));
+          if (encontrada >= 0) indiceHoja = encontrada;
+        }
+        const hoja = workbook.Sheets[workbook.SheetNames[indiceHoja]];
+        if (!hoja) {
+          showToast('No se encontró ninguna hoja en el archivo', 'error');
+          return { success: false, importados: 0, omitidos: 0, errores: 0 };
+        }
+
+        const filas = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: '' });
+
+        const fechaHoy = (() => {
+          const d = new Date();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })();
+
+        let importados = 0;
+        let omitidos = 0;
+        let errores = 0;
+
+        for (const fila of filas) {
+          const campos: Record<string, unknown> = {};
+          for (const [clave, valor] of Object.entries(fila)) campos[normalizarTexto(clave)] = valor;
+
+          const getStr = (claves: string[]) => {
+            for (const c of claves) {
+              const v = campos[c];
+              if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+            }
+            return '';
+          };
+          const getNum = (claves: string[]) => {
+            const s = getStr(claves).replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '.').replace(/\s+/g, '');
+            const n = Number(s);
+            return isNaN(n) ? 0 : n;
+          };
+          const getFecha = () => {
+            const v = campos['fecha'];
+            if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
+            if (typeof v === 'number' && v > 1000) {
+              const ssSSF = XLSX.SSF as unknown as { parse_date_code?: (n: number) => { y: number; m: number; d: number } | undefined };
+              const d = ssSSF.parse_date_code?.(Math.round(v));
+              if (d) return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+            }
+            const s = String(v ?? '').trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            const partes = s.split('/');
+            if (partes.length === 3) return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+            return fechaHoy;
+          };
+
+          const nombre = getStr(['nombre', 'producto', 'item']);
+          if (!nombre) continue;
+          const yaExiste = lista.some((p) => p.nombre.trim().toLowerCase() === nombre.toLowerCase());
+          if (yaExiste) { omitidos += 1; continue; }
+
+          const precioIngreso = getNum(['costo unit', 'precio ingreso', 'costo', 'precio de ingreso']);
+          const cantidad = getNum(['stock', 'cantidad', 'cant', 'existencia', 'cant instalados']);
+          const precioVenta = getNum(['precio venta', 'precio']);
+          const metodoPago: MetodoPago = getStr(['metodo de pago', 'metodo', 'metodopago']).toLowerCase().includes('nequi') ? 'nequi' : 'efectivo';
+          const fecha = getFecha();
+
+          let subTipo = 'general';
+          if (tipo === 'venta') {
+            const vinculo = getStr(['vinculo pulpa', 'vinculo', 'vinculopulpa', 'subtipo']);
+            if (vinculo && vinculo.toLowerCase() !== 'ninguno') subTipo = vinculo;
+          } else if (tipo === 'insumo') {
+            const tipoInsumo = getStr(['tipo de insumo', 'tipo insumo', 'tipo']);
+            if (tipoInsumo.toLowerCase().includes('pulpa')) subTipo = 'pulpa';
+          }
+
+          const formData = new FormData();
+          formData.append('nombre', nombre);
+          formData.append('precioIngreso', String(precioIngreso));
+          formData.append('precioVenta', String(precioVenta));
+          formData.append('cantidad', String(cantidad));
+          formData.append('descripcion', tipo === 'venta' ? '' : fecha);
+          formData.append('fecha', fecha);
+          formData.append('tipo', tipo);
+          formData.append('subTipo', subTipo);
+          formData.append('metodoPago', metodoPago);
+
+          try {
+            await productService.create(formData);
+            importados += 1;
+          } catch {
+            errores += 1;
+          }
+        }
+
+        await obtenerProductos();
+
+        let mensaje = `Se importaron ${importados} registro(s) correctamente`;
+        if (omitidos > 0) mensaje += `, ${omitidos} omitido(s) por ya existir`;
+        if (errores > 0) mensaje += `, ${errores} con error`;
+        showToast(mensaje, importados > 0 ? 'success' : omitidos > 0 ? 'info' : 'warning');
+        return { success: true, importados, omitidos, errores };
+      } catch {
+        showToast('Error al leer el archivo Excel. Verifica que sea un .xlsx o .xls válido', 'error');
+        return { success: false, importados: 0, omitidos: 0, errores: 0 };
+      }
+    },
+    [lista, obtenerProductos, showToast]
+  );
+
   return {
     states: { lista, nombre, precioIngreso, precioVenta, cantidad, descripcion, fecha, metodoPago, subTipoInsumo, imagen, editandoId },
     setters: { setNombre, setPrecioIngreso, setPrecioVenta, setCantidad, setDescripcion, setFecha, setMetodoPago, setSubTipoInsumo, setImagen },
-    actions: { guardarProducto, eliminarProducto, cargarDatosEdicion, limpiarFormulario },
+    actions: { guardarProducto, eliminarProducto, cargarDatosEdicion, limpiarFormulario, importarDesdeExcel },
   };
 }
