@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useInventario } from '../hooks/inventario';
 import * as XLSX from 'xlsx';
 import type { TipoProducto } from '../types';
+import { API_ENDPOINTS } from '../config/api';
 import '../styles/admin.css';
 
 interface InventarioProps {
@@ -247,7 +248,7 @@ export function Inventario({ tipo = 'venta' }: InventarioProps) {
             ) : (
               itemsPaginaActual.map((item) => (
                 <tr key={item.id} className={item.stockBajo ? 'stock-bajo-row' : ''}>
-                  <td><div className="thumb-container">{item.imagen ? <img src={`http://localhost:3001${item.imagen}`} alt={item.nombre} /> : <i className="fas fa-image"></i>}</div></td>
+                  <td><div className="thumb-container">{item.imagen ? <img src={API_ENDPOINTS.IMAGEN(item.imagen)} alt={item.nombre} /> : <i className="fas fa-image"></i>}</div></td>
                   <td className="txt-bold">{item.nombre}{item.subTipo === 'pulpa' && <span className="badge-pulpa">PULPA</span>}{item.stockBajo && <span className="badge-stock-bajo">⚠️ Stock Bajo</span>}</td>
                   <td className={item.stockBajo ? 'cantidad-baja' : ''}>{item.cantidad}{item.esVentaConPulpa && <span className="stock-hint">(de pulpa)</span>}</td>
                   <td>${Number(item.precioIngreso || 0).toLocaleString()}</td>

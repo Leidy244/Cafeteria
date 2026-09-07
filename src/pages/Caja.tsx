@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVentas } from '../hooks/caja';
+import { API_ENDPOINTS } from '../config/api';
 import '../styles/caja.css';
 
 export default function Caja() {
@@ -203,7 +204,7 @@ export default function Caja() {
               <div key={p.id} className={`producto-card ${estaAgotado ? 'sin-stock' : ''}`}>
                 <div className="producto-img-container">
                   {p.imagen
-                    ? <img src={`http://localhost:3001/imagenes/${p.imagen.replace('/imagenes/', '')}`} alt={p.nombre} className="producto-img" />
+                    ? <img src={API_ENDPOINTS.IMAGEN(p.imagen)} alt={p.nombre} className="producto-img" />
                     : <div className="sin-img">☕</div>}
                 </div>
                 <div className="producto-info">
