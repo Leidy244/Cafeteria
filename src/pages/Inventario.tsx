@@ -33,7 +33,7 @@ export function Inventario({ tipo = 'venta' }: InventarioProps) {
   }, [states.lista]);
 
   const esGestionInterna = tipo === 'insumo' || tipo === 'equipo';
-  const mostrarAlertaStockBajo = tipo === 'venta' || tipo === 'insumo';
+  const mostrarAlertaStockBajo = tipo === 'venta';
 
   const listaFiltrada = useMemo(() => {
     let lista = states.lista
