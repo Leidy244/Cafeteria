@@ -7,6 +7,11 @@ import { useToast } from '../contexts';
 const normalizarTexto = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
+const fechaHoy = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const getCampo = (campos: Record<string, unknown>, patrones: string[]) => {
   for (const p of patrones) {
     const v = campos[p];
@@ -31,7 +36,7 @@ export function useInventario() {
   const [precioVenta, setPrecioVenta] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [fecha, setFecha] = useState('');
+  const [fecha, setFecha] = useState(fechaHoy());
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo');
   const [subTipoInsumo, setSubTipoInsumo] = useState('general');
   const [imagen, setImagen] = useState<File | null>(null);
@@ -121,7 +126,7 @@ export function useInventario() {
     setPrecioVenta('');
     setCantidad('');
     setDescripcion('');
-    setFecha('');
+    setFecha(fechaHoy());
     setSubTipoInsumo('general');
     setMetodoPago('efectivo');
     setImagen(null);

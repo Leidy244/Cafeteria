@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCaja } from '../hooks/cierrecaja';
 import { useToast } from '../contexts';
 import '../styles/admin.css';
@@ -9,6 +9,10 @@ export default function CierreCaja() {
   const [inputBase, setInputBase] = useState('');
   const [inputNequi, setInputNequi] = useState('');
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
+
+  useEffect(() => {
+    refrescar();
+  }, [refrescar]);
 
   if (cargando) {
     return (

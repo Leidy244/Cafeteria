@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Producto, CarritoItem, Pedido } from '../types';
 import { productService, ordersService, salesService } from '../services';
-import { useToast } from '../contexts';
+import { useToast, useCashRegister } from '../contexts';
 
 export const useVentas = () => {
   const { showToast } = useToast();
+  const { refrescar: refrescarCaja } = useCashRegister();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [carrito, setCarrito] = useState<CarritoItem[]>([]);
   const [mesa, setMesa] = useState('');
@@ -213,6 +214,7 @@ export const useVentas = () => {
           setMontoRecibido('');
           await cargarProductos();
           await cargarPedidosDesdeDB();
+          await refrescarCaja();
         } else {
           showToast('Error al procesar la venta', 'error');
         }
@@ -220,7 +222,7 @@ export const useVentas = () => {
         showToast('Error de conexión al procesar la venta', 'error');
       }
     },
-    [carrito, total, mesa, montoRecibido, pedidosPendientes, agruparCarrito, cargarProductos, cargarPedidosDesdeDB, showToast]
+    [carrito, total, mesa, montoRecibido, pedidosPendientes, agruparCarrito, cargarProductos, cargarPedidosDesdeDB, refrescarCaja, showToast]
   );
 
   const productosOrdenados = [...productos].sort((a, b) => {

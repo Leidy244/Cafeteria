@@ -80,6 +80,13 @@ export function CashRegisterProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refrescar();
+    const refrescarAlEnfocar = () => refrescar();
+    const timer = setInterval(() => refrescar(), 15000);
+    window.addEventListener('focus', refrescarAlEnfocar);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refrescarAlEnfocar);
+    };
   }, [refrescar]);
 
   const isOpen = cajaInfo?.estado === 'abierto';
